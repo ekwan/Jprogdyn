@@ -1,0 +1,94 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>edu.harvard.chemistry.ekwan</groupId>
+  <artifactId>Jprogdyn</artifactId>
+  <packaging>jar</packaging>
+  
+  <version>1.0-SNAPSHOT</version>
+  <name>Jprogdyn</name>
+  <url>http://www.github.com/ekwan/Jprogdyn</url>
+
+  <properties>
+   <exec.mainClass>edu.harvard.chemistry.ekwan.Jprogdyn.Loader</exec.mainClass>
+   <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+   <maven.compiler.source>1.8</maven.compiler.source>
+   <maven.compiler.target>1.8</maven.compiler.target>
+   <nd4j.version>1.0</nd4j.version>
+  </properties>
+
+  <dependencies>
+    
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>3.8.1</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+     <groupId>com.google.guava</groupId>
+     <artifactId>guava</artifactId>
+     <version>23.0</version>
+    </dependency>
+
+    <dependency>
+     <groupId>org.apache.commons</groupId>
+     <artifactId>commons-math3</artifactId>
+     <version>3.6</version>
+    </dependency>
+
+    <dependency>
+     <groupId>commons-io</groupId>
+     <artifactId>commons-io</artifactId>
+     <version>2.6</version>
+    </dependency>
+
+  </dependencies>
+
+  <reporting>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <version>3.0.0</version>
+        <configuration>
+          <additionalparam>-Xdoclint:all -Xdoclint:+missing</additionalparam>
+          <additionalJOption>-Xdoclint:all -Xdoclint:+missing</additionalJOption>
+          <aggregate>false</aggregate>
+        </configuration>
+        <reportSets>
+          <reportSet>
+            <id>default</id>
+            <reports>
+              <report>javadoc</report>
+            </reports>
+          </reportSet>
+        </reportSets>
+      </plugin>
+    </plugins>
+  </reporting>
+
+  <build>
+
+   <plugins>
+
+    <plugin>
+     <groupId>org.apache.maven.plugins</groupId>
+     <artifactId>maven-compiler-plugin</artifactId>
+     <version>3.5.1</version>
+     <configuration>
+      <source>1.8</source>
+      <target>1.8</target>
+      <compilerArgs>
+       <arg>-Xlint:all</arg>
+      </compilerArgs>
+     </configuration>
+    </plugin>
+ 
+   </plugins>
+
+  </build>
+
+</project>
