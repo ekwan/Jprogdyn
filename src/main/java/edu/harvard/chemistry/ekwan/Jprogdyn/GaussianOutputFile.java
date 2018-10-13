@@ -39,7 +39,7 @@ public class GaussianOutputFile extends OutputFileFormat {
                 link1count++;
             if ( link1count > 1 )
                 {
-                    if ( ! Settings.MAIN_CLASS.equals("NMRtrajectoryFactory") )
+                    if ( ! Loader.getString("trajectory_type").equals("reaction") )
                         System.out.printf("Warning: %s has a Link1 directive, continuing anyways.\n", filename);
                     break;
                 }

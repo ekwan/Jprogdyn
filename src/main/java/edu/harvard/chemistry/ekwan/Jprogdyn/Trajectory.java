@@ -17,7 +17,7 @@ public class Trajectory implements WorkUnit, Result, Serializable {
     public static final long serialVersionUID = 1L;
 
     /** How often to save progress.  Note that the first 20 points are always saved point by point. */
-    public static final int CHECKPOINT_INTERVAL = Settings.CHECKPOINT_INTERVAL;
+    public static final int CHECKPOINT_INTERVAL = Loader.getInteger("checkpoint_interval");
 
     // Fields
 

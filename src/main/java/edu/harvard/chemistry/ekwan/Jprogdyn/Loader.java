@@ -16,10 +16,27 @@ public class Loader {
     /** The configuration data. */
     public static final Map<String,String> CONFIG_STRINGS_MAP;
 
+    /** The name of the current host. */
+    public static final String HOSTNAME;
+
 	/**
      * This static initializer reads the specified configuration file.
 	 */
     static {
+        // set hostname
+        String temp = "localhost";
+        try {
+                temp = java.net.InetAddress.getLocalHost().getHostName();
+        }
+        catch (Exception e) {
+        }
+
+        if ( temp.length() > 0 )
+            temp = temp.split("\\.")[0];
+        else
+            temp = "localhost";
+        HOSTNAME = temp;
+
         // check command line arguments
         System.out.println("\n=== Jprogdyn 1.0 ===");
         String configFilename = "Jprogdyn.config";
@@ -38,7 +55,7 @@ public class Loader {
 
         // these fields contain strings that reference enums
         List<String> ENUM_KEYS = ImmutableList.of("ignore_duplicate_reads");
-        for (String s : BOOLEAN_KEYS) {
+        for (String s : ENUM_KEYS) {
             if ( ! EXPECTED_KEYS.contains(s) )
                 throw new IllegalArgumentException("check enum key " + s);
         }

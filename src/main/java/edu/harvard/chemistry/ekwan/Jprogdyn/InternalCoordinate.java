@@ -211,7 +211,7 @@ public abstract class InternalCoordinate implements Immutable, Serializable {
 
         /**
          * Compute the bond length.
-         * @param position the atomic coordinates
+         * @param positions the atomic coordinates
          * @return the bond length in Angstroms
          */
         public double getValue(List<Vector3D> positions) {
@@ -242,7 +242,7 @@ public abstract class InternalCoordinate implements Immutable, Serializable {
 
         /**
          * Compute the bond angle.
-         * @param position the atomic coordinates
+         * @param positions the atomic coordinates
          * @return the bond angle in degrees        
          */
         public double getValue(List<Vector3D> positions) {
@@ -277,7 +277,7 @@ public abstract class InternalCoordinate implements Immutable, Serializable {
 
         /**
          * Compute the bond torsion.
-         * @param position the atomic coordinates
+         * @param positions the atomic coordinates
          * @return the dihedral angle in degrees        
          */
         public double getValue(List<Vector3D> positions) {

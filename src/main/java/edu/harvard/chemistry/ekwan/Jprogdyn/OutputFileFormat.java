@@ -16,9 +16,9 @@ public abstract class OutputFileFormat implements FileFormat
     public final String stringRepresentation;
 
     /**
-     * The parsed contents of the file.<p>
-     * The outer list contains each line.<p>
-     * Each inner list contains the space-separated tokens for each line.<p>
+     * <p>The parsed contents of the file.</p>
+     * <p>The outer list contains each line.</p>
+     * <p>Each inner list contains the space-separated tokens for each line.</p>
      */
     public final List<List<String>> fileContents;
 

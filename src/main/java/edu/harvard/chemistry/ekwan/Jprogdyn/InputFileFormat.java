@@ -17,7 +17,7 @@ public abstract class InputFileFormat implements FileFormat, Immutable, Serializ
 
     /**
      * Constructor.
-     * @param stringRperesentation the text of the file
+     * @param stringRepresentation the text of the file
      */
     public InputFileFormat(String stringRepresentation) {
         this.stringRepresentation = stringRepresentation;

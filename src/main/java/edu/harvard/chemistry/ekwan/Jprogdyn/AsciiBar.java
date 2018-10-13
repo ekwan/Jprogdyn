@@ -68,7 +68,13 @@ public class AsciiBar implements Immutable, Singleton {
         return s.toString();
     }
 
-    /** Prints a bar with standard parameters. */
+    /**
+     * Prints a bar with standard parameters.
+     * @param value the value of the quantity
+     * @param min the minimum value of the quantity (the left edge)
+     * @param max the maximum value of the quantity (the right edge)
+     * @return the ASCII bar as a String
+     */
     public static String make(double value, double min, double max) {
         return make(value, min, max, "*", " ", 20);
     }

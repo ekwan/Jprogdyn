@@ -56,7 +56,7 @@ public class Initializer implements Immutable, Serializable
      */
     public final Map<Integer,VibrationalInitializationType> specialModeInitializationMap;
 
-    /** The difference between desired and actual potential energies of the initialized geometry must be within this percentage. */
+    /** The difference between the desired and actual potential energies of the initialized geometry must be within this percentage. */
     public final double tolerance;
 
     /** The level of theory to do the initialization at. */
@@ -76,6 +76,15 @@ public class Initializer implements Immutable, Serializable
 
     /**
      * Loads the parameters we need for initialization but doesn't actually do any work.
+     * @param molecule original molecule
+     * @param temperature temperature in K
+     * @param timestep timestep in fs
+     * @param vibrationType what kind of vibrational initialization to do by default
+     * @param rotationType what kind of rotational initialization to do
+     * @param specialModeInitializationMap map from mode index (0-indexed) to what kind of vibrational initialization to do in that mode 
+     * @param tolerance the difference between the desired and actual potential energies must be within this percentage
+     * @param calculationMethod the level of theory to do the initializaiton at
+     * @param scaleFactor linear scaling factor of vibrational frequencies
      */
     public Initializer(Molecule molecule, double temperature, double timestep,
                        VibrationalInitializationType vibrationType, RotationalInitializationType rotationType,
@@ -714,28 +723,5 @@ public class Initializer implements Immutable, Serializable
              scaleFactor == i.scaleFactor )
             return true;
         return false;
-    }
-
-    /** For testing. */
-    public static void main(String[] args)
-    {
-        GaussianOutputFile f = new GaussianOutputFile("test_files/dmac_hpmodes.out");
-        System.out.println(f.molecule);
-        GaussianCalculationMethod method = new GaussianCalculationMethod(CalculationMethod.CalculationType.ENERGY_AND_FORCE, // type of calculation
-                                                                         3,                                                  // memory in GB
-                                                                         8,                                                  // processors
-                                                                         "#p b3lyp/6-31g* force",                            // route card
-                                                                         "");
-        Initializer initializer = new Initializer(f.molecule,                                           // molecule to initialize
-                                                  298.0,                                                // temperature in K
-                                                  1.0,                                                  // timestep in fs
-                                                  VibrationalInitializationType.QUASICLASSICAL,         // vibrational initialization type
-                                                  RotationalInitializationType.CLASSICAL,               // rotational initialization type
-                                                  new HashMap<Integer,VibrationalInitializationType>(), // modes to keep undisplaced
-                                                  0.01,                                                 // harmonic tolerance in percent
-                                                  method,                                               // level of theory
-                                                  1.00                                                  // vibrational scale factor
-                                                  );
-        initializer.initialize(5);  // maxAttempts
     }
 }

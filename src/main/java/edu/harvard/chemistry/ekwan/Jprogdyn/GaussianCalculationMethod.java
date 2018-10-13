@@ -7,6 +7,7 @@ import java.util.*;
  * Note that NMR calculations often require forces.
  */
 public class GaussianCalculationMethod extends CalculationMethod {
+    
     /** For serialization. */
     public static final long serialVersionUID = 1L;
 
@@ -20,7 +21,7 @@ public class GaussianCalculationMethod extends CalculationMethod {
      * Constructor.
      * @param calculationType whether this is an NMR or force calculation
      * @param memory memory to use in GB
-     * @param number of processors to use
+     * @param processors number of processors to use
      * @param routeCard the route card
      * @param footer any text to append after the geometry
      */

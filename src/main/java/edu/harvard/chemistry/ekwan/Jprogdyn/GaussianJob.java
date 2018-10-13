@@ -40,13 +40,13 @@ public class GaussianJob implements ESSUnit, Serializable {
         
         // expand environment variable if necessary
         counting:
-        for (int i=0; i < Loader.getInteger("gaussian_job_max_filenames"); i++) {
+        for (int i=0; i < Loader.getInteger("gaussian_max_filenames"); i++) {
             // get a new ID number for this job
             index = INDEX_GENERATOR.getAndIncrement();
             baseFilename = String.format("%s_gaussian_%010d", Loader.HOSTNAME, index);
 
             // don't allow this choice of filenames if any files with this prefix already exist
-            for ( File f : new File(Loader.getString("gaussian_scratch_directory").listFiles() ) ) {
+            for ( File f : new File(Loader.getString("gaussian_directory")).listFiles() ) {
                 if ( f.getName().startsWith(baseFilename) ) {
                     baseFilename = "";
                     continue counting;
@@ -54,7 +54,7 @@ public class GaussianJob implements ESSUnit, Serializable {
             }
 
             // reset counter if necessary
-            if ( INDEX_GENERATOR.get() > Loader.getInteger("gaussian_job_max_filenames") )
+            if ( INDEX_GENERATOR.get() > Loader.getInteger("gaussian_max_filenames") )
                 INDEX_GENERATOR.getAndSet(0);
             break;
         }
@@ -62,17 +62,17 @@ public class GaussianJob implements ESSUnit, Serializable {
             throw new IllegalArgumentException("Unable to set filename!");
 
         // write input files to disk
-        File jobDirectory = new File(Loader.getString("GAUSSIAN_SCRATCH_DIRECTORY") + baseFilename);
+        File jobDirectory = new File(Loader.getString("gaussian_directory") + baseFilename);
         boolean success = jobDirectory.mkdir();
         if ( !success )
             throw new IllegalArgumentException("failed to create directory " + baseFilename);
-        gjf.write( Loader.getString("GAUSSIAN_SCRATCH_DIRECTORY") + baseFilename + "/gaussian.gjf" );
+        gjf.write( Loader.getString("gaussian_directory") + baseFilename + "/gaussian.gjf" );
 
         // call Gaussian
         double elapsedTime = 0.0;
         try {
                 long startTime = System.currentTimeMillis();
-                String runString = Loader.getString("gaussian_job_directory") + "run_gaussian.sh " + Loader.getString("gaussian_scratch_directory") + baseFilename;
+                String runString = Loader.getString("gaussian_directory") + "run_gaussian.sh " + Loader.getString("gaussian_directory") + baseFilename;
                 Process process = Runtime.getRuntime().exec(runString);
                 int exitValue = process.waitFor();
                 long endTime = System.currentTimeMillis();
@@ -84,7 +84,7 @@ public class GaussianJob implements ESSUnit, Serializable {
         }
 
         // retrieve output
-        GaussianResult result = new GaussianResult(Loader.getString("gaussian_scratch_directory") + baseFilename + "/gaussian.out", elapsedTime);
+        GaussianResult result = new GaussianResult(Loader.getString("gaussian_directory") + baseFilename + "/gaussian.out", elapsedTime);
 	
         // remove files
         try {
