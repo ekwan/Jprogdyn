@@ -9,7 +9,7 @@ import org.apache.commons.io.FileUtils;
 /**
  * This class represents a molecular dynamics trajectory.  This object is mutable.
  */
-public class Trajectory implements Runnable, Serializable {
+public class Trajectory implements Callable<Trajectory>, Serializable {
     
     // Constants
 
@@ -173,15 +173,14 @@ public class Trajectory implements Runnable, Serializable {
                    alternative.backwardPoints.size() > backwardPoints.size()  ))
                 {
                     System.out.printf("Trajectory auto-loaded from checkpoint %s.\n", checkpointFilename);
-                    alternative.run();
-                    return;
+                    return alternative.call();
                 }
         }
 
         // check if we are done
         if ( this.isDone() ) {
             System.out.println("This trajectory is already finished.");
-            return;
+            return this;
         }
 
         // initialize if necessary
@@ -227,7 +226,7 @@ public class Trajectory implements Runnable, Serializable {
         
             // check geometric termination conditions
             if ( checkTerminationConditions(newPoint, true) )
-                return;
+                return this;
         }
 
         // run backward points
@@ -264,7 +263,7 @@ public class Trajectory implements Runnable, Serializable {
         }
 
         System.out.println("All trajectory points are complete.");
-        return;
+        return this;
     }
     
     /**
