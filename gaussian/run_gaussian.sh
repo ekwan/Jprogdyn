@@ -14,11 +14,12 @@ jobDirectory=$1
 cd $jobDirectory
 export GAUSS_SCRDIR=$jobDirectory
 
-# set permissions to give everyone access to working directory
+# set permissions to give everyone access to the working directory
+# this can be useful to allow other processes to delete this directory afterwards
 chmod a+rwx $jobDirectory
 chmod a+rwx *
 
 # run Gaussian
 g16 gaussian.gjf gaussian.out
 
-# the job directory will be cleaned up by java, so we don't need to do anything for that
+# the job directory will be cleaned up by Jprogdyn, so we don't need to do anything for that
