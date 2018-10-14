@@ -1,6 +1,6 @@
 # Jprogdyn
 
-*quasiclassical and classical dynamic with Gaussian*
+*quasiclassical and classical dynamics with Gaussian*
 
 ## Contents
   - [Introduction](#introduction)
@@ -45,7 +45,15 @@ That's it!  If you encounter any problems during the build process, please let u
 
 ### Javadoc
 
-*Jprogdyn* is open-source software and the code is extensively documented through a Javadoc.  To build the javadoc: `mvn javadoc:javadoc`  This will place the result in: `Jprogdyn/target/site/apidocs/edu/harvard/chemistry/ekwan/Jprogdyn/package-summary.html`.
+*Jprogdyn* is open-source software and the code is extensively documented through a Javadoc to facilitate modifications.
+
+To build the javadoc:
+
+`mvn javadoc:javadoc`
+
+This will place the result in:
+
+`Jprogdyn/target/site/apidocs/edu/harvard/chemistry/ekwan/Jprogdyn/package-summary.html`.
 
 ## Tutorials
 
@@ -119,9 +127,9 @@ This program is inspired by the `progdyn` suite of software written by Professor
 
 ### References
 
-1. <span id="ref1">"Concerted Nucleophilic Aromatic Substitutions."</span>  Kwan, E.E.; Zeng, Y.; Besser, H.A.; Jacobsen, E.N.  *Nature Chem.* **2018**, *10*, 917&ndash;923.
+1. <a id="ref1" href="https://doi.org/10.1038/s41557-018-0079-7">"Concerted Nucleophilic Aromatic Substitutions."</a>  Kwan, E.E.; Zeng, Y.; Besser, H.A.; Jacobsen, E.N.  *Nature Chem.* **2018**, *10*, 917&ndash;923.
 
-2. <span id="ref2">"Enhancing NMR Prediction for Organic Compounds Using Molecular Dynamics."</span>  Kwan, E.E.; Liu, R.Y.  *J. Chem. Theory Comput.*  **2015**, *11*, 5083&ndash;5089.
+2. <a id="ref2" href="https://doi.org/10.1021/acs.jctc.5b00856">"Enhancing NMR Prediction for Organic Compounds Using Molecular Dynamics."</a>  Kwan, E.E.; Liu, R.Y.  *J. Chem. Theory Comput.*  **2015**, *11*, 5083&ndash;5089.
 
 ### Authors
 
