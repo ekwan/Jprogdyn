@@ -6,7 +6,7 @@ import java.io.*;
 /**
  * This class represents the output of a Gaussian job.
  */
-public class GaussianResult implements Result {
+public class GaussianResult {
 
     /** The result of the calculation. */
     public final GaussianOutputFile out; 

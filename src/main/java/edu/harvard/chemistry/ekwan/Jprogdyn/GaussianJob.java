@@ -10,7 +10,7 @@ import com.google.common.collect.*;
 /**
  * This class represents a Gaussian job.  The Gaussian executable must be in the path for this to work.
  */
-public class GaussianJob implements ESSUnit, Serializable {
+public class GaussianJob implements Callable<GaussianResult>, Serializable {
     
     /** For serialization. */
     public static final long serialVersionUID = 1L;

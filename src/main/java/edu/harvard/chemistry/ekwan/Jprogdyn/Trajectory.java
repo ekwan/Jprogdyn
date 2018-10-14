@@ -9,7 +9,7 @@ import org.apache.commons.io.FileUtils;
 /**
  * This class represents a molecular dynamics trajectory.  This object is mutable.
  */
-public class Trajectory implements WorkUnit, Result, Serializable {
+public class Trajectory implements Runnable, Serializable {
     
     // Constants
 
@@ -97,7 +97,7 @@ public class Trajectory implements WorkUnit, Result, Serializable {
         this.timestep = timestep;
         
         // setup the trajectory points
-        initialPoint = null; // will be initialized during call()
+        initialPoint = null; // will be initialized during run()
 
         if ( desiredForwardPoints < 0 || desiredBackwardPoints < 0 )
             throw new IllegalArgumentException("negative number of requested points");
@@ -160,9 +160,9 @@ public class Trajectory implements WorkUnit, Result, Serializable {
 
     /**
      * Runs the trajectory.  Checkpoints are saved frequently in the background.
-     * @return returns itself
      */
-    public Trajectory call() {
+    @Override
+    public void run() {
         // check if a more recent copy of this trajectory is available
         if ( new File(checkpointFilename).exists() ) {
             Trajectory alternative = loadCheckpoint(checkpointFilename);
@@ -173,14 +173,15 @@ public class Trajectory implements WorkUnit, Result, Serializable {
                    alternative.backwardPoints.size() > backwardPoints.size()  ))
                 {
                     System.out.printf("Trajectory auto-loaded from checkpoint %s.\n", checkpointFilename);
-                    return alternative.call();
+                    alternative.run();
+                    return;
                 }
         }
 
         // check if we are done
         if ( this.isDone() ) {
             System.out.println("This trajectory is already finished.");
-            return this;
+            return;
         }
 
         // initialize if necessary
@@ -226,7 +227,7 @@ public class Trajectory implements WorkUnit, Result, Serializable {
         
             // check geometric termination conditions
             if ( checkTerminationConditions(newPoint, true) )
-                return this;
+                return;
         }
 
         // run backward points
@@ -263,7 +264,7 @@ public class Trajectory implements WorkUnit, Result, Serializable {
         }
 
         System.out.println("All trajectory points are complete.");
-        return this;
+        return;
     }
     
     /**
