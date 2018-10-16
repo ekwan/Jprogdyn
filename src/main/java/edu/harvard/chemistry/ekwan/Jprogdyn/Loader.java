@@ -55,7 +55,7 @@ public class Loader {
 													  "gaussian_directory","gaussian_max_filenames","number_of_simultaneous_trajectories",
 													  "number_of_processors_per_trajectory","memory_per_trajectory","gaussian_force_route_card",
 													  "gaussian_force_footer","job_type","trajectory_type",
-													  "number_of_total_trajectories","checkpoint_prefix","checkpoint_interval",
+													  "number_of_total_trajectories","checkpoint_directory", "checkpoint_prefix","checkpoint_interval",
 													  "temperature","maximum_number_of_initialization_attempts","harmonic_tolerance",
 													  "scale_factor","vibrational_initialization_default","vibrational_initialization_override",
 													  "rotational_initialization_type","termination_condition",
@@ -83,6 +83,10 @@ public class Loader {
                 int hashtagIndex = value.indexOf("#");
                 if ( hashtagIndex > -1 )
                     value = value.substring(0, hashtagIndex).trim();
+
+                // check for unexpected keys
+                if ( ! EXPECTED_KEYS.contains(key) )
+                    quit(String.format("unexpected line in configuration file:\n%s", line));
 
                 // store values
                 if ( configStringsMap.containsKey(key) ) {
@@ -131,176 +135,6 @@ public class Loader {
             String value = CONFIG_STRINGS_MAP.get(key);
             //System.out.printf("%s : %s\n", key, value);
         }
-
-        // check invariants
-        String workingDirectory = getString("working_directory");
-        if ( ! new File(workingDirectory).isDirectory() )
-            quit(String.format("working directory %d not found", workingDirectory));
-
-        String frequencyDirectory = String.format("%s/%s", workingDirectory, getString("frequency_directory"));
-        if ( ! new File(frequencyDirectory).isDirectory() )
-            quit(String.format("frequency directory %s not found", frequencyDirectory));
-        
-        String frequencyFilename = String.format("%s/%s", frequencyDirectory, getString("frequency_file"));
-        if ( ! new File(frequencyFilename).isFile() )
-            quit(String.format("frequency file %s not found", frequencyFilename));
-
-        String gaussianDirectory = String.format("%s/%s", workingDirectory, getString("gaussian_directory"));
-        if ( ! new File(gaussianDirectory).isDirectory() )
-            quit(String.format("gaussian directory %s not found", gaussianDirectory));
-
-        String gaussianScriptFilename = String.format("%s/%s", gaussianDirectory, "run_gaussian.sh");
-        if ( ! new File(gaussianScriptFilename).isFile() )
-            quit(String.format("could not find %s", gaussianScriptFilename));
-
-        int gaussianMaxFilenames = getInteger("gaussian_max_filenames");
-        if ( gaussianMaxFilenames < 10 )
-            quit("gaussian_max_filenames must be at least 10");
-
-        int numberOfSimultaneousTrajectories = getInteger("number_of_simultaneous_trajectories");
-        if ( numberOfSimultaneousTrajectories < 1 )
-            quit("number of simultaneous trajectories must be at least 1");
-
-        int numberOfProcessorsPerTrajectory = getInteger("number_of_processors_per_trajectory");
-        if ( numberOfProcessorsPerTrajectory < 1 )
-            quit("number of processors per trajectory must be at least 1");
-        int memoryPerTrajectory = getInteger("memory_per_trajectory");
-        
-        if ( memoryPerTrajectory < 1 )
-            quit("memory per trajectory must be at least 1");
-
-        String gaussianForceRouteCard = getString("gaussian_force_route_card");
-        if ( gaussianForceRouteCard.length() == 0 )
-            quit("gaussian force route card cannot be blank");
-
-        String jobType = getString("job_type");
-        if ( ! ( jobType.equals("trajectory") || jobType.equals("analysis") ) )
-            quit("job_type must be 'trajectory' or 'analysis'");
-
-        String trajectoryType = getString("trajectory_type");
-        if ( ! ( trajectoryType.equals("reaction") || trajectoryType.equals("nmr") ) )
-            quit("trajectory_type must be 'reaction' or 'nmr'");
-
-        int numberOfTotalTrajectories = getInteger("number_of_total_trajectories");
-        if ( numberOfTotalTrajectories < 0 )
-            quit("number of total trajectories must be non-negative");
-
-        String checkpointPrefix = getString("checkpoint_prefix");
-        if ( checkpointPrefix.length() == 0 )
-            quit("blank checkpoint_prefix not allowed");
-
-        int checkpointInterval = getInteger("checkpoint_interval");
-        if ( checkpointInterval < 1 || checkpointInterval > 50 )
-            quit("checkpoint interval must be betweeen [1,50]");
-
-        double temperature = getDouble("temperature");
-        if ( temperature < 0.0 )
-            quit("temperature must be non-negative");
-        
-        int maximumNumberOfInitializationAttempts = getInteger("maximum_number_of_initialization_attempts");
-        if ( maximumNumberOfInitializationAttempts < 10 )
-            quit("maximum number of initialization attempts must be at least 10");
-        
-        double harmonicTolerance = getDouble("harmonic_tolerance");
-        if ( harmonicTolerance < 0.0001 || harmonicTolerance > 10.0 )
-            quit("harmonic tolerance must be [0.0001,10.0]");
-        
-        double scaleFactor = getDouble("scale_factor");
-        if ( scaleFactor < 0.5 || scaleFactor > 1.5 )
-            quit("scale_factor must be [0.5, 1.5]");
-        
-        Set<String> allowedInitializationTypes = new HashSet<>();
-        for ( Initializer.VibrationalInitializationType t : Initializer.VibrationalInitializationType.values() )
-            allowedInitializationTypes.add(t.toString().toLowerCase());
-        String vibrationalInitializationDefault = getString("vibrational_initialization_default").toLowerCase();
-        if ( ! allowedInitializationTypes.contains(vibrationalInitializationDefault) )
-            quit(String.format("unrecognized value for vibrational_initialization_default: %s"));
-        
-        String vibrationalInitializationOverride = getString("vibrational_initialization_override");
-        if ( ! vibrationalInitializationOverride.equals("no_overrides") ) {
-            try {
-                String[] overrides = vibrationalInitializationOverride.split(";");
-                for (String overrideString : overrides) {
-                    String[] fields = overrideString.split(":");
-                    if ( fields.length != 2 )
-                        quit(String.format("invalid vibrational initialization override string: %s", overrideString));
-                    int modeNumber = Integer.parseInt(fields[0]);
-                    if ( modeNumber < 0 )
-                        quit(String.format("negative mode number not allowed"));
-                    if ( ! allowedInitializationTypes.contains( fields[1].trim().toLowerCase() ) )
-                        quit(String.format("check initialization type for override: %s", fields[1]));
-                }
-            }
-            catch (Exception e) {
-                quit("check vibrational initialization string");
-            }
-        }
-
-        allowedInitializationTypes = new HashSet<>();
-        for ( Initializer.RotationalInitializationType t : Initializer.RotationalInitializationType.values() )
-            allowedInitializationTypes.add(t.toString().toLowerCase());
-        String rotationalInitializationType = getString("rotational_initialization_type").toLowerCase();
-        if ( ! allowedInitializationTypes.contains(rotationalInitializationType) )
-            quit(String.format("unrecognized value for rotational_initialization_type: %s", rotationalInitializationType));
-
-        String terminationConditions = getString("termination_condition").toLowerCase();
-        if ( ! terminationConditions.equals("no_termination_conditions") ) {
-            String terminationConditionsSplit[] = terminationConditions.split(";");
-            for (String terminationCondition : terminationConditionsSplit) {
-                try {
-                    String[] fields = terminationCondition.split(",");
-                    String coordinateType = fields[0].toLowerCase();
-                    
-                    if ( ! ( ( coordinateType.equals("bond_length") && fields.length == 6 ) ||
-                             ( coordinateType.equals("bond_angle") && fields.length == 7 ) ||
-                             ( coordinateType.equals("torsion") && fields.length == 8 )        ) )
-                        throw new Exception();
-
-                    String comparisonOperatorString = fields[fields.length-2].trim().toLowerCase();
-                    if ( ! ImmutableSet.of("greater_than","equals","less_than").contains( comparisonOperatorString ) )
-                        throw new Exception();
-
-                }
-                catch (Exception e) {
-                    quit(String.format("check termination conditions string: %s", terminationCondition));
-                }
-            }
-        }
-
-		if ( jobType.equals("nmr") ) {
-			int nmrPointInterval = getInteger("nmr_point_interval");
-			if ( nmrPointInterval < 1 )
-				quit("check nmr_point_interval");
-			
-			String shieldingsFilename = String.format("%s/%s", frequencyDirectory, getString("shieldings_file"));
-			if ( ! new File(shieldingsFilename).isFile() )
-				quit(String.format("nmr shieldings file %s not found", shieldingsFilename));
-
-            String gaussianNmrRouteCard = getString("gaussian_nmr_route_card");
-            if ( gaussianNmrRouteCard.length() == 0 )
-                quit("can't have blank nmr route card");
-
-            try {
-                String symmetryGroupsString = getString("symmetry_groups");
-                String[] symmetryGroups = symmetryGroupsString.split(";");
-                Set<Integer> alreadySeen = new HashSet<>();
-                for (String symmetryGroup : symmetryGroups) {
-                    String fields[] = symmetryGroup.split(",");
-                    for (String s : fields) {
-                        int atomNumber = Integer.parseInt(s.trim());
-                        if ( atomNumber < 0 )
-                            throw new Exception();
-                        if ( alreadySeen.contains(atomNumber) )
-                            throw new Exception();
-                        alreadySeen.add(atomNumber);
-                    }
-                }
-            }
-            catch (Exception e) {
-                quit("check symmetry groups string");
-            }
-		}
-
     }
 
     /**
@@ -354,7 +188,249 @@ public class Loader {
      * @param args command-line arguments other than the configuration filename are ignored
      */
     public static void main(String[] args) {
+        // check invariants
+        String workingDirectory = getString("working_directory");
+        if ( ! new File(workingDirectory).isDirectory() )
+            quit(String.format("working directory %d not found", workingDirectory));
+
+        String frequencyDirectory = String.format("%s/%s", workingDirectory, getString("frequency_directory"));
+        if ( ! new File(frequencyDirectory).isDirectory() )
+            quit(String.format("frequency directory %s not found", frequencyDirectory));
+        
+        String frequencyFilename = String.format("%s/%s", frequencyDirectory, getString("frequency_file"));
+        if ( ! new File(frequencyFilename).isFile() )
+            quit(String.format("frequency file %s not found", frequencyFilename));
+
+        String gaussianDirectory = String.format("%s/%s", workingDirectory, getString("gaussian_directory"));
+        if ( ! new File(gaussianDirectory).isDirectory() )
+            quit(String.format("gaussian directory %s not found", gaussianDirectory));
+
+        String gaussianScriptFilename = String.format("%s/%s", gaussianDirectory, "run_gaussian.sh");
+        if ( ! new File(gaussianScriptFilename).isFile() )
+            quit(String.format("could not find %s", gaussianScriptFilename));
+
+        int gaussianMaxFilenames = getInteger("gaussian_max_filenames");
+        if ( gaussianMaxFilenames < 10 )
+            quit("gaussian_max_filenames must be at least 10");
+
+        int numberOfSimultaneousTrajectories = getInteger("number_of_simultaneous_trajectories");
+        if ( numberOfSimultaneousTrajectories < 1 )
+            quit("number of simultaneous trajectories must be at least 1");
+
+        int numberOfProcessorsPerTrajectory = getInteger("number_of_processors_per_trajectory");
+        if ( numberOfProcessorsPerTrajectory < 1 )
+            quit("number of processors per trajectory must be at least 1");
+        
+        int memoryPerTrajectory = getInteger("memory_per_trajectory");
+        if ( memoryPerTrajectory < 1 )
+            quit("memory per trajectory must be at least 1");
+
+        String gaussianForceRouteCard = getString("gaussian_force_route_card");
+        if ( gaussianForceRouteCard.length() == 0 )
+            quit("gaussian force route card cannot be blank");
+
+        String jobType = getString("job_type");
+        if ( ! ( jobType.equals("trajectory") || jobType.equals("analysis") ) )
+            quit("job_type must be 'trajectory' or 'analysis'");
+
+        String trajectoryType = getString("trajectory_type");
+        if ( ! ( trajectoryType.equals("reaction") || trajectoryType.equals("nmr") ) )
+            quit("trajectory_type must be 'reaction' or 'nmr'");
+
+        int numberOfTotalTrajectories = getInteger("number_of_total_trajectories");
+        if ( numberOfTotalTrajectories < 0 )
+            quit("number of total trajectories must be non-negative");
+
+        String checkpointDirectory = String.format("%s/%s", workingDirectory, getString("checkpoint_directory"));
+        if ( ! new File(checkpointDirectory).isDirectory() )
+            quit(String.format("can't find checkpoint directory %s", checkpointDirectory));
+
+        String checkpointPrefix = getString("checkpoint_prefix");
+        if ( checkpointPrefix.length() == 0 )
+            quit("blank checkpoint_prefix not allowed");
+    
+        int checkpointInterval = getInteger("checkpoint_interval");
+        if ( checkpointInterval < 1 || checkpointInterval > 50 )
+            quit("checkpoint interval must be betweeen [1,50]");
+
+        double temperature = getDouble("temperature");
+        if ( temperature < 0.0 )
+            quit("temperature must be non-negative");
+        
+        int maximumNumberOfInitializationAttempts = getInteger("maximum_number_of_initialization_attempts");
+        if ( maximumNumberOfInitializationAttempts < 10 )
+            quit("maximum number of initialization attempts must be at least 10");
+        
+        double harmonicTolerance = getDouble("harmonic_tolerance");
+        if ( harmonicTolerance < 0.0001 || harmonicTolerance > 10.0 )
+            quit("harmonic tolerance must be [0.0001,10.0]");
+        
+        double scaleFactor = getDouble("scale_factor");
+        if ( scaleFactor < 0.5 || scaleFactor > 1.5 )
+            quit("scale_factor must be [0.5, 1.5]");
+        
+        String vibrationalInitializationDefaultString = getString("vibrational_initialization_default").toUpperCase();
+        Initializer.VibrationalInitializationType vibrationalInitializationDefault = null;
+        try {
+            vibrationalInitializationDefault = Initializer.VibrationalInitializationType.valueOf(vibrationalInitializationDefaultString);
+        }
+        catch (Exception e) {
+            quit("check default vibrational initialization type");
+        }
+
+        String vibrationalInitializationOverrideString = getString("vibrational_initialization_override").toUpperCase();
+        Map<Integer,Initializer.VibrationalInitializationType> specialModeInitializationMap = new HashMap<>();
+        if ( ! vibrationalInitializationOverrideString.equals("no_overrides") ) {
+            String[] overrides = vibrationalInitializationOverrideString.split(";");
+            for (String overrideString : overrides) {
+                String[] fields = overrideString.split(":");
+                if ( fields.length != 2 )
+                    quit(String.format("invalid vibrational initialization override string: %s", overrideString));
+                int modeNumber = Integer.parseInt(fields[0]);
+                if ( modeNumber < 0 )
+                    quit(String.format("negative mode number not allowed"));
+                if ( specialModeInitializationMap.containsKey(modeNumber) )
+                    quit(String.format("duplicate mode number given:\n%s", overrideString));
+                
+                Initializer.VibrationalInitializationType type = null;
+                try {    
+                    type = Initializer.VibrationalInitializationType.valueOf(fields[1].trim());
+                }
+                catch (Exception e) {
+                    quit(String.format("check vibrational initialization string\n%s", overrideString));
+                }
+                specialModeInitializationMap.put(modeNumber, type);
+            }
+        }
+
+        String rotationalInitializationTypeString = getString("rotational_initialization_type").toUpperCase();
+        Initializer.RotationalInitializationType rotationalInitializationType = null;
+        try {
+            rotationalInitializationType = Initializer.RotationalInitializationType.valueOf(rotationalInitializationTypeString);
+        }
+        catch (Exception e) {
+            quit("check rotational initialization type");
+        }
+        
+        String terminationConditionsString = getString("termination_condition");
+        List<InternalCoordinate.Condition> terminationConditions = new LinkedList<>();
+        
+        if ( ! terminationConditionsString.equals("no_termination_conditions") && jobType.equals("trajectory") ) {
+            String terminationConditionsSplit[] = terminationConditionsString.split(";");
+            for (String terminationCondition : terminationConditionsSplit) {
+                try {
+                    String[] fields = terminationCondition.split(",");
+                    for (int i=0; i < fields.length; i++)
+                        fields[i] = fields[i].trim();
+                    
+                    String comparisonOperatorString = fields[fields.length-2].toUpperCase();
+                    InternalCoordinate.ConditionType conditionType = InternalCoordinate.ConditionType.valueOf(comparisonOperatorString);
+                    
+                    double value = Double.parseDouble(fields[fields.length-1]);
+                    String description = fields[fields.length-3];
+                    
+                    String coordinateType = fields[0].toLowerCase();
+                    InternalCoordinate.Condition condition = null;
+                    if ( coordinateType.equals("bond_length") && fields.length == 6 ) {
+                        InternalCoordinate.Length bond = new InternalCoordinate.Length(Integer.parseInt(fields[1])-1, Integer.parseInt(fields[2])-1, description);
+                        condition = new InternalCoordinate.Condition(bond, conditionType, value);
+                    }
+                    else if ( coordinateType.equals("bond_angle") && fields.length == 7 ) {
+                        InternalCoordinate.Angle angle = new InternalCoordinate.Angle(Integer.parseInt(fields[1])-1, Integer.parseInt(fields[2])-1,
+                                                                                      Integer.parseInt(fields[3])-1, description);
+                        condition = new InternalCoordinate.Condition(angle, conditionType, value);
+                    }
+                    else if ( coordinateType.equals("torsion") && fields.length == 8 ) {
+                        InternalCoordinate.Torsion torsion = new InternalCoordinate.Torsion(Integer.parseInt(fields[1])-1, Integer.parseInt(fields[2])-1,
+                                                                                            Integer.parseInt(fields[3])-1, Integer.parseInt(fields[4])-1, description);
+                        new InternalCoordinate.Condition(torsion, conditionType, value);
+                    }
+                    else
+                        throw new Exception();
+                    terminationConditions.add(condition);
+                }
+                catch (Exception e) {
+                    quit(String.format("check termination conditions string: %s", terminationCondition));
+                }
+            }
+        }
+
+		if ( jobType.equals("nmr") ) {
+			int nmrPointInterval = getInteger("nmr_point_interval");
+			if ( nmrPointInterval < 1 )
+				quit("check nmr_point_interval");
+			
+			String shieldingsFilename = String.format("%s/%s", frequencyDirectory, getString("shieldings_file"));
+			if ( ! new File(shieldingsFilename).isFile() )
+				quit(String.format("nmr shieldings file %s not found", shieldingsFilename));
+
+            String gaussianNmrRouteCard = getString("gaussian_nmr_route_card");
+            if ( gaussianNmrRouteCard.length() == 0 )
+                quit("can't have blank nmr route card");
+
+            try {
+                String symmetryGroupsString = getString("symmetry_groups");
+                String[] symmetryGroups = symmetryGroupsString.split(";");
+                Set<Integer> alreadySeen = new HashSet<>();
+                for (String symmetryGroup : symmetryGroups) {
+                    String fields[] = symmetryGroup.split(",");
+                    for (String s : fields) {
+                        int atomNumber = Integer.parseInt(s.trim());
+                        if ( atomNumber < 0 )
+                            throw new Exception();
+                        if ( alreadySeen.contains(atomNumber) )
+                            throw new Exception();
+                        alreadySeen.add(atomNumber);
+                    }
+                }
+            }
+            catch (Exception e) {
+                quit("check symmetry groups string");
+            }
+		}
+
+        // ready to go
         System.out.println("Loaded configuration data successfully.");
         System.out.printf("Jprogdyn is running on host %s.\n", HOSTNAME);
+
+        // determine what kind of job is being requested
+        if ( jobType.equals("trajectory") && trajectoryType.equals("reaction") ) {
+            // run reaction trajectories
+            System.out.println("Will run reaction trajectories.");
+        }
+        else if ( jobType.equals("analysis") && trajectoryType.equals("reaction") ) {
+            // run reaction trajectory analysis
+            System.out.println("Will run reaction trajectory analysis.");
+        }
+        else if ( jobType.equals("trajectory") && trajectoryType.equals("nmr") ) {
+            // run NMR trajectories
+            System.out.println("Will run NMR trajectories.");
+        
+            // create the requested trajectories
+			List<Trajectory> trajectories = new ArrayList<>(numberOfTotalTrajectories);
+			for (int i=0; i < numberOfTotalTrajectories; i++)
+				{
+			/*		String checkpointFilename = String.format("%s_%04d.chk", checkpointPrefix, i);
+					Initializer initializer = new Initializer(molecule, 298.0, 1.0, Initializer.VibrationalInitializationType.QUASICLASSICAL,
+															  Initializer.RotationalInitializationType.CLASSICAL,
+															  new HashMap<Integer,Initializer.VibrationalInitializationType>(),
+															  harmonicTolerance, dynamicsMethod, 1.00);
+					Trajectory trajectory = new Trajectory(molecule, 1.0, numberOfPoints, numberOfPoints, new ArrayList<InternalCoordinate.Condition>(),
+														   100, initializer, dynamicsMethod, NMRmethod, NMRinterval, checkpointFilename);
+					returnList.add(trajectory);*/
+				}
+
+            // run the trajectories
+            //TrajectoryExecutorService.runTrajectories(trajectories);
+        }
+        else if ( jobType.equals("analysis") && trajectoryType.equals("nmr") ) {
+            // run NMR trajectory analysis
+            System.out.println("Will run NMR trajectory analysis.");
+        }
+        else
+            quit("unrecognized job type");
+    
+        // finished
+        System.out.println("Jprogdyn has terminated successfully.");
     }
 }
