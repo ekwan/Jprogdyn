@@ -62,17 +62,22 @@ public class GaussianJob implements Callable<GaussianResult>, Serializable {
             throw new IllegalArgumentException("Unable to set filename!");
 
         // write input files to disk
-        File jobDirectory = new File(Loader.getString("gaussian_directory") + baseFilename);
+        String jobDirectoryName = String.format("%s/%s/%s", Loader.getString("working_directory"), Loader.getString("gaussian_directory"),
+                                                baseFilename);
+        File jobDirectory = new File(jobDirectoryName);
         boolean success = jobDirectory.mkdir();
         if ( !success )
             throw new IllegalArgumentException("failed to create directory " + baseFilename);
         gjf.write( Loader.getString("gaussian_directory") + baseFilename + "/gaussian.gjf" );
+        System.out.println(gjf);
+        System.exit(1);
 
         // call Gaussian
         double elapsedTime = 0.0;
         try {
                 long startTime = System.currentTimeMillis();
-                String runString = Loader.getString("gaussian_directory") + "run_gaussian.sh " + Loader.getString("gaussian_directory") + baseFilename;
+                
+                String runString = Loader.getString("gaussian_directory") + "/run_gaussian.sh " + Loader.getString("gaussian_directory") + baseFilename;
                 Process process = Runtime.getRuntime().exec(runString);
                 int exitValue = process.waitFor();
                 long endTime = System.currentTimeMillis();

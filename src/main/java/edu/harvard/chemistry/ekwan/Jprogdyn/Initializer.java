@@ -259,17 +259,17 @@ public class Initializer implements Immutable, Serializable
                     type = specialModeInitializationMap.get(i);
 
                 if ( type == VibrationalInitializationType.QUASICLASSICAL )
-                    doQuasiclassicalVibration(scratchPaper, mode);
+                    doQuasiclassicalVibration(scratchPaper, mode, i);
                 else if ( type == VibrationalInitializationType.CLASSICAL )
-                    doClassicalVibration(scratchPaper, mode);
+                    doClassicalVibration(scratchPaper, mode, i);
                 else if ( type == VibrationalInitializationType.UNIFORM )
-                    doUniformVibration(scratchPaper, mode);
+                    doUniformVibration(scratchPaper, mode, i);
                 else if ( type == VibrationalInitializationType.TS_POSITIVE )
-                    doTSVibration(scratchPaper, mode, VelocitySign.POSITIVE);
+                    doTSVibration(scratchPaper, mode, i, VelocitySign.POSITIVE);
                 else if ( type == VibrationalInitializationType.TS_NEGATIVE )
-                    doTSVibration(scratchPaper, mode, VelocitySign.NEGATIVE);
+                    doTSVibration(scratchPaper, mode, i, VelocitySign.NEGATIVE);
                 else if ( type == VibrationalInitializationType.TS_RANDOM )
-                    doTSVibration(scratchPaper, mode, VelocitySign.RANDOMIZE);
+                    doTSVibration(scratchPaper, mode, i, VelocitySign.RANDOMIZE);
                 else if ( type == VibrationalInitializationType.NONE )
                     {
                         // do nothing
@@ -329,25 +329,6 @@ public class Initializer implements Immutable, Serializable
         throw new IllegalArgumentException(String.format("Maximum number of initialization attempts has been exceeded."));
     }
 
-    /**
-     * Displaces a mode by some amount.  For debugging only; energies and velocities not updated.
-     * @param mode the mode to displace
-     * @param relativeShift how much to displace the mode by (-1.0 to 1.0)
-     * @param scratchPaper where to update the results to
-     */
-    private void setMode(NormalMode mode, double relativeShift, ScratchPaper scratchPaper)
-    {
-        if ( relativeShift < -1.0 || relativeShift > 1.0 )
-            throw new IllegalArgumentException("shift should be within -1.0 to 1.0");
-        List<Vector3D> normalModeCoordinates = mode.coordinates;
-        for (int i=0; i < normalModeCoordinates.size(); i++)
-            {
-                Vector3D direction = normalModeCoordinates.get(i);
-                Vector3D displacement = direction.scalarMultiply(relativeShift);
-                scratchPaper.displacements.set(i, displacement.add(scratchPaper.displacements.get(i)));
-            }
-    }
-    
     /** How to treat velocities in each mode. */
     public enum VelocitySign
     {
@@ -365,12 +346,13 @@ public class Initializer implements Immutable, Serializable
      * For a specified energy and displacement, add displacements to the initial geometry and
      * add vibrational kinetic energy.  The amount of PE/KE to add is decided elsewhere.
      * @param mode the normal mode to use
+     * @param modeIndex the 0-indexed number of this mode
      * @param thisTotalEnergy total energy to add to this mode in kcal/mol
      * @param shift the randomly selected displacement in this mode in angstroms
      * @param scratchPaper where to update the results to
      * @param velocitySign the sign of the velocities in this mode
      */
-    private void doVibration(NormalMode mode, double thisTotalEnergy, double shift, ScratchPaper scratchPaper, VelocitySign velocitySign)
+    private void doVibration(NormalMode mode, int modeIndex, double thisTotalEnergy, double shift, ScratchPaper scratchPaper, VelocitySign velocitySign)
     {
         // calculate energies
         double reducedMass = mode.reducedMass;           // amu
@@ -379,7 +361,6 @@ public class Initializer implements Immutable, Serializable
 
         // compute relative displacement
         double maxShift = HarmonicOscillatorDistribution.getClassicalTurningPoint(thisTotalEnergy, forceConstant);
-        int modeIndex = molecule.modes.indexOf(mode);
         if ( maximumDisplacementRecord.containsKey(modeIndex) || displacementRecord.containsKey(modeIndex) || velocityRecord.containsKey(modeIndex) )
             throw new IllegalArgumentException("unexpected duplicate entry in displacement record");
         maximumDisplacementRecord.put(modeIndex, maxShift);
@@ -481,8 +462,9 @@ public class Initializer implements Immutable, Serializable
      * 4. Determine the desired potential energy and the kinetic energy.
      * @param scratchPaper the initialization to change
      * @param mode the mode to deal with
+     * @param modeIndex the 0-indexed number of this mode
      */
-    private void doQuasiclassicalVibration(ScratchPaper scratchPaper, NormalMode mode)
+    private void doQuasiclassicalVibration(ScratchPaper scratchPaper, NormalMode mode, int modeIndex)
     {
         // choose vibrational level
         double frequency = scaleFactor * mode.frequency; // cm-1
@@ -500,10 +482,10 @@ public class Initializer implements Immutable, Serializable
         double shift = HarmonicOscillatorDistribution.drawRandomQuantumDisplacement(level, reducedMass, frequency, forceConstant);
         double maxShift = HarmonicOscillatorDistribution.getClassicalTurningPoint(thisTotalEnergy, forceConstant);
 
-        System.out.printf("Selected qc level %1d (%4.2f kcal) for mode %4d (%4.0f cm^-1; unscaled %4.0f cm^-1).  Shift is %5.0f%% (%5.2f of a possible %5.2f A).\n", level, thisTotalEnergy, molecule.modes.indexOf(mode), frequency, frequency/scaleFactor, 100.0*(shift/maxShift), shift, maxShift);
+        System.out.printf("Selected qc level %1d (%4.2f kcal) for mode %4d (%4.0f cm^-1; unscaled %4.0f cm^-1).  Shift is %5.0f%% (%5.2f of a possible %5.2f A).\n", level, thisTotalEnergy, modeIndex, frequency, frequency/scaleFactor, 100.0*(shift/maxShift), shift, maxShift);
 
         // displace and add velocities
-        doVibration(mode, thisTotalEnergy, shift, scratchPaper, VelocitySign.RANDOMIZE);
+        doVibration(mode, modeIndex, thisTotalEnergy, shift, scratchPaper, VelocitySign.RANDOMIZE);
     }
 
     /**
@@ -511,8 +493,9 @@ public class Initializer implements Immutable, Serializable
      * Same algorithm as the quasi-classical algorithm (see {@link #doQuasiclassicalVibration(ScratchPaper, NormalMode)}),
      * except we choose the total energy from a continuous Boltzmann distribution and displacements from
      * the classical probability distribution.
+     * @param modeIndex the 0-indexed number of this mode
      */
-    private void doClassicalVibration(ScratchPaper scratchPaper, NormalMode mode)
+    private void doClassicalVibration(ScratchPaper scratchPaper, NormalMode mode, int modeIndex)
     {
         // draw the total energy for this mode from a Boltzmann distribution
         double thisTotalEnergy = RotationalBoltzmann.getRandomBoltzmannEnergy(temperature);  // kcal/mol
@@ -523,13 +506,12 @@ public class Initializer implements Immutable, Serializable
         // calculate energies
         double reducedMass = mode.reducedMass;          // amu
         double forceConstant = mode.forceConstant;      // mDyne/A
-        //System.out.printf("Added %4.2f kcal classically for mode %4d (%4.0f cm^-1, unscaled %4.0f cm^-1).  ", thisTotalEnergy, molecule.modes.indexOf(mode), frequency, frequency/scaleFactor);
 
         // get random displacement in angstroms
         double shift = HarmonicOscillatorDistribution.drawRandomClassicalDisplacement(thisTotalEnergy, forceConstant);
 
         // displace and add velocities
-        doVibration(mode, thisTotalEnergy, shift, scratchPaper, VelocitySign.RANDOMIZE);
+        doVibration(mode, modeIndex, thisTotalEnergy, shift, scratchPaper, VelocitySign.RANDOMIZE);
     }
 
     /**
@@ -539,7 +521,7 @@ public class Initializer implements Immutable, Serializable
      * except we choose the total energy from a continuous Boltzmann distribution and displacements from
      * a uniform distribution between turning points.
      */
-    private void doUniformVibration(ScratchPaper scratchPaper, NormalMode mode)
+    private void doUniformVibration(ScratchPaper scratchPaper, NormalMode mode, int modeIndex)
     {
         // draw the total energy for this mode from a Boltzmann distribution
         double thisTotalEnergy = RotationalBoltzmann.getRandomBoltzmannEnergy(temperature);  // kcal/mol
@@ -548,13 +530,12 @@ public class Initializer implements Immutable, Serializable
         // calculate energies
         double reducedMass = mode.reducedMass;          // amu
         double forceConstant = mode.forceConstant;      // mDyne/A
-        //System.out.printf("Added %4.2f kcal classically for mode %4d (%4.0f cm^-1, unscaled %4.0f cm^-1).  ", thisTotalEnergy, molecule.modes.indexOf(mode), frequency, frequency/scaleFactor);
 
         // get random displacement in angstroms
         double shift = HarmonicOscillatorDistribution.drawRandomUniformDisplacement(thisTotalEnergy, forceConstant);
 
         // displace and add velocities
-        doVibration(mode, thisTotalEnergy, shift, scratchPaper, VelocitySign.RANDOMIZE);
+        doVibration(mode, modeIndex, thisTotalEnergy, shift, scratchPaper, VelocitySign.RANDOMIZE);
     }
 
     /**
@@ -562,19 +543,19 @@ public class Initializer implements Immutable, Serializable
      * with a classical amount of kinetic energy in the positive or negative direction.
      * @param scratchPaper the initialization to perturb
      * @param mode the mode to deal with
+     * @param modeIndex the 0-indexed number of this mode
      * @param velocitySign what sign to give the velocity along the imaginary mode
      */
-    private void doTSVibration(ScratchPaper scratchPaper, NormalMode mode, VelocitySign velocitySign)
+    private void doTSVibration(ScratchPaper scratchPaper, NormalMode mode, int modeIndex, VelocitySign velocitySign)
     {
         // draw the total energy for this mode from a Boltzmann distribution
         double thisTotalEnergy = RotationalBoltzmann.getRandomBoltzmannEnergy(temperature);  // kcal/mol
-        //System.out.printf("Added %4.2f kcal classically for TS mode %4d (%4.0f cm^-1, unscaled %4.0f cm^-1).  ", thisTotalEnergy, molecule.modes.indexOf(mode), frequency, frequency/scaleFactor);
 
         // do not displace this mode
         double shift = 0.0;
 
         // displace and add velocities
-        doVibration(mode, thisTotalEnergy, shift, scratchPaper, velocitySign);
+        doVibration(mode, modeIndex, thisTotalEnergy, shift, scratchPaper, velocitySign);
     }
 
     /**
@@ -723,5 +704,27 @@ public class Initializer implements Immutable, Serializable
              scaleFactor == i.scaleFactor )
             return true;
         return false;
+    }
+
+    /** For testing. */
+    public static void main(String[] args)
+    {
+        GaussianOutputFile f = new GaussianOutputFile("test_files/methane_b3lyp_midix.out");
+        GaussianCalculationMethod method = new GaussianCalculationMethod(CalculationMethod.CalculationType.ENERGY_AND_FORCE, // type of calculation
+                                                                         3,                                                  // memory in GB
+                                                                         8,                                                  // processors
+                                                                         "#p b3lyp/6-31g* force",                            // route card
+                                                                         "");
+        Initializer initializer = new Initializer(f.molecule,                                           // molecule to initialize
+                                                  298.0,                                                // temperature in K
+                                                  1.0,                                                  // timestep in fs
+                                                  VibrationalInitializationType.QUASICLASSICAL,         // vibrational initialization type
+                                                  RotationalInitializationType.CLASSICAL,               // rotational initialization type
+                                                  new HashMap<Integer,VibrationalInitializationType>(), // modes to keep undisplaced
+                                                  0.01,                                                 // harmonic tolerance in percent
+                                                  method,                                               // level of theory
+                                                  1.00                                                  // vibrational scale factor
+                                                  );
+        initializer.initialize(5);  // maxAttempts
     }
 }

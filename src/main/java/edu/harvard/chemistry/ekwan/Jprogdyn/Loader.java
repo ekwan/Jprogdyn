@@ -56,7 +56,8 @@ public class Loader {
 													  "number_of_processors_per_trajectory","memory_per_trajectory","gaussian_force_route_card",
 													  "gaussian_force_footer","job_type","trajectory_type",
 													  "number_of_total_trajectories","checkpoint_directory", "checkpoint_prefix","checkpoint_interval",
-													  "temperature","maximum_number_of_initialization_attempts","harmonic_tolerance",
+													  "temperature","timestep","number_of_forward_points","number_of_backward_points", 
+                                                      "maximum_number_of_initialization_attempts","harmonic_tolerance",
 													  "scale_factor","vibrational_initialization_default","vibrational_initialization_override",
 													  "rotational_initialization_type","termination_condition",
 													  "nmr_point_interval","shieldings_file","gaussian_nmr_route_card",
@@ -229,6 +230,8 @@ public class Loader {
         if ( gaussianForceRouteCard.length() == 0 )
             quit("gaussian force route card cannot be blank");
 
+        String gaussianForceFooter = getString("gaussian_force_footer");
+
         String jobType = getString("job_type");
         if ( ! ( jobType.equals("trajectory") || jobType.equals("analysis") ) )
             quit("job_type must be 'trajectory' or 'analysis'");
@@ -257,6 +260,21 @@ public class Loader {
         if ( temperature < 0.0 )
             quit("temperature must be non-negative");
         
+        double timestep = getDouble("timestep");
+        if ( timestep < 0.0001 || timestep > 10 )
+            quit("timestep out of range [0.0001,10]");
+
+        int numberOfForwardPoints = getInteger("number_of_forward_points");
+        if ( numberOfForwardPoints < 0 )
+            quit("number of forward trajectory points must be non-negative");
+
+        int numberOfBackwardPoints = getInteger("number_of_backward_points");
+        if ( numberOfBackwardPoints < 0 )
+            quit("number of backward trajectory points must be non-negative");
+
+        if ( numberOfForwardPoints + numberOfBackwardPoints < 1 )
+            quit("must calculate some trajectory points");
+
         int maximumNumberOfInitializationAttempts = getInteger("maximum_number_of_initialization_attempts");
         if ( maximumNumberOfInitializationAttempts < 10 )
             quit("maximum number of initialization attempts must be at least 10");
@@ -280,7 +298,7 @@ public class Loader {
 
         String vibrationalInitializationOverrideString = getString("vibrational_initialization_override").toUpperCase();
         Map<Integer,Initializer.VibrationalInitializationType> specialModeInitializationMap = new HashMap<>();
-        if ( ! vibrationalInitializationOverrideString.equals("no_overrides") ) {
+        if ( ! vibrationalInitializationOverrideString.equals("NO_OVERRIDES") ) {
             String[] overrides = vibrationalInitializationOverrideString.split(";");
             for (String overrideString : overrides) {
                 String[] fields = overrideString.split(":");
@@ -355,16 +373,19 @@ public class Loader {
             }
         }
 
-		if ( jobType.equals("nmr") ) {
-			int nmrPointInterval = getInteger("nmr_point_interval");
+		int nmrPointInterval = 0;
+		String shieldingsFilename = null;
+	    String gaussianNmrRouteCard = null;
+		if ( trajectoryType.equals("nmr") ) {
+			nmrPointInterval = getInteger("nmr_point_interval");
 			if ( nmrPointInterval < 1 )
 				quit("check nmr_point_interval");
 			
-			String shieldingsFilename = String.format("%s/%s", frequencyDirectory, getString("shieldings_file"));
+			shieldingsFilename = String.format("%s/%s", frequencyDirectory, getString("shieldings_file"));
 			if ( ! new File(shieldingsFilename).isFile() )
 				quit(String.format("nmr shieldings file %s not found", shieldingsFilename));
 
-            String gaussianNmrRouteCard = getString("gaussian_nmr_route_card");
+            gaussianNmrRouteCard = getString("gaussian_nmr_route_card");
             if ( gaussianNmrRouteCard.length() == 0 )
                 quit("can't have blank nmr route card");
 
@@ -406,18 +427,47 @@ public class Loader {
             // run NMR trajectories
             System.out.println("Will run NMR trajectories.");
         
+            // read frequency molecule
+            GaussianOutputFile frequenciesOutputFile = new GaussianOutputFile(frequencyFilename);
+            Molecule frequenciesMolecule = frequenciesOutputFile.molecule;
+            System.out.printf("Read frequency data from %s (%d atoms, %d normal modes).\n", frequencyFilename,
+                              frequenciesMolecule.contents.size(), frequenciesMolecule.modes.size());
+
+            // read shieldings molecule
+			GaussianOutputFile shieldingsOutputFile = new GaussianOutputFile(shieldingsFilename);
+			Molecule shieldingsMolecule = shieldingsOutputFile.molecule;
+            System.out.printf("Read chemical shift data from %s.\n", shieldingsFilename);
+            if ( frequenciesMolecule.contents.size() != shieldingsMolecule.contents.size() )
+                quit("mismatch between frequency and shieldings molecules");
+
+			// make calculation methods
+			String gaussianForceRouteCardFull = String.format("#p force %s", gaussianForceRouteCard);
+            String gaussianForceFooterFull = String.format("%s\n", gaussianForceFooter);
+            CalculationMethod dynamicsMethod = new GaussianCalculationMethod(CalculationMethod.CalculationType.ENERGY_AND_FORCE,
+																			 memoryPerTrajectory, numberOfProcessorsPerTrajectory,
+																			 gaussianForceRouteCardFull, gaussianForceFooterFull);
+            String gaussianNMRFooterFull = String.format("--Link1--\n%%chk=Jprogdyn.chk\n%%nprocshared=%d\n%%mem=%dGB\n#p NMR geom=allcheck guess=read %s",
+                                                         numberOfProcessorsPerTrajectory, memoryPerTrajectory, gaussianForceRouteCard);
+			GaussianCalculationMethod nmrMethod = new GaussianCalculationMethod(CalculationMethod.CalculationType.NMR,
+																		        memoryPerTrajectory, numberOfProcessorsPerTrajectory,
+																		        gaussianForceRouteCardFull, gaussianNMRFooterFull);
+
             // create the requested trajectories
+            System.out.println("Generating trajectories...");
 			List<Trajectory> trajectories = new ArrayList<>(numberOfTotalTrajectories);
 			for (int i=0; i < numberOfTotalTrajectories; i++)
 				{
-			/*		String checkpointFilename = String.format("%s_%04d.chk", checkpointPrefix, i);
-					Initializer initializer = new Initializer(molecule, 298.0, 1.0, Initializer.VibrationalInitializationType.QUASICLASSICAL,
-															  Initializer.RotationalInitializationType.CLASSICAL,
-															  new HashMap<Integer,Initializer.VibrationalInitializationType>(),
-															  harmonicTolerance, dynamicsMethod, 1.00);
-					Trajectory trajectory = new Trajectory(molecule, 1.0, numberOfPoints, numberOfPoints, new ArrayList<InternalCoordinate.Condition>(),
-														   100, initializer, dynamicsMethod, NMRmethod, NMRinterval, checkpointFilename);
-					returnList.add(trajectory);*/
+                    String checkpointFilename = String.format("%s/%s/%s_%04d.chk", workingDirectory, checkpointDirectory, checkpointPrefix, i);
+                    Initializer initializer = new Initializer(frequenciesMolecule, temperature, timestep, vibrationalInitializationDefault,
+                                                              rotationalInitializationType,
+                                                              specialModeInitializationMap,
+                                                              harmonicTolerance, dynamicsMethod, scaleFactor);
+                    Trajectory trajectory = new Trajectory(frequenciesMolecule, timestep, numberOfForwardPoints, numberOfBackwardPoints,
+                                                           new ArrayList<InternalCoordinate.Condition>(), maximumNumberOfInitializationAttempts,
+                                                           initializer, dynamicsMethod, nmrMethod, nmrPointInterval, checkpointFilename); 
+                    trajectories.add(trajectory);
+                    trajectory.call();
+                    System.out.printf("   Generated %s.\n", checkpointFilename);
 				}
 
             // run the trajectories
