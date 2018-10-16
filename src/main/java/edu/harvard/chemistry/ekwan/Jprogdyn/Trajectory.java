@@ -3,6 +3,7 @@ package edu.harvard.chemistry.ekwan.Jprogdyn;
 import org.apache.commons.math3.geometry.euclidean.threed.*;
 import java.util.*;
 import java.io.*;
+import java.util.concurrent.*;
 import com.google.common.collect.*;
 import org.apache.commons.io.FileUtils;
 
@@ -162,7 +163,7 @@ public class Trajectory implements Callable<Trajectory>, Serializable {
      * Runs the trajectory.  Checkpoints are saved frequently in the background.
      */
     @Override
-    public void run() {
+    public Trajectory call() {
         // check if a more recent copy of this trajectory is available
         if ( new File(checkpointFilename).exists() ) {
             Trajectory alternative = loadCheckpoint(checkpointFilename);

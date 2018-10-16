@@ -115,6 +115,10 @@ In general, a timestep of 1.0 fs is a good compromise between speed (fewer traje
 
 MOLDEN
 
+### Parallel Execution
+
+*Jprogdyn* has facilities to run trajectories on one computer simultaneously.  To run *Jprogdyn* on multiple computers at once, compile *Jprogdyn* once and run the program using different `.config` files.  Choose the filenames and directories in these `.config` files so that the simulataneous instances of *Jprogdyn* will not confict.  Avoid recompiling the classes while *Jprogdyn* is in operation.
+
 ### Other Electronic Structure Programs
 
 *Jprogdyn* has been written to interface with Gaussian, but it should be possible to modify it to work with other electronic structure programs as long as the same information (forces, frequencies, normal modes, reduced masses, etc.) is available.
@@ -133,7 +137,7 @@ This program is inspired by the `progdyn` suite of software written by Professor
 
 ### Authors
 
-*Jprogdyn* was written by Eugene Kwan and Richard Liu at the Department of Chemistry and Chemical Biology at Harvard University.
+*Jprogdyn* was written by Eugene Kwan and Richard Liu at the Department of Chemistry and Chemical Biology at Harvard University.  The name simply means "Java program for dynamics."
 
 ### Getting Help
 
