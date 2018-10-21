@@ -31,8 +31,12 @@ public class TrajectoryExecutorService implements Singleton {
      * @param trajectories the trajectories to run
      * @return the completed trajectories
      */
-    public List<Trajectory> runTrajectories(List<Trajectory> trajectories) {
+    public static List<Trajectory> runTrajectories(List<Trajectory> trajectories) {
+        if ( trajectories == null )
+            throw new NullPointerException("trajectories is null");
+
         // submit work
+        System.out.printf("Running %d trajectories...\n", trajectories.size());
         List<Future<Trajectory>> futures = new LinkedList<>();
         for (Trajectory t : trajectories) {
             Future<Trajectory> f = EXECUTOR.submit(t);
