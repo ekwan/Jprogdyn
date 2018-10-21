@@ -705,26 +705,4 @@ public class Initializer implements Immutable, Serializable
             return true;
         return false;
     }
-
-    /** For testing. */
-    public static void main(String[] args)
-    {
-        GaussianOutputFile f = new GaussianOutputFile("test_files/methane_b3lyp_midix.out");
-        GaussianCalculationMethod method = new GaussianCalculationMethod(CalculationMethod.CalculationType.ENERGY_AND_FORCE, // type of calculation
-                                                                         3,                                                  // memory in GB
-                                                                         8,                                                  // processors
-                                                                         "#p b3lyp/6-31g* force",                            // route card
-                                                                         "");
-        Initializer initializer = new Initializer(f.molecule,                                           // molecule to initialize
-                                                  298.0,                                                // temperature in K
-                                                  1.0,                                                  // timestep in fs
-                                                  VibrationalInitializationType.QUASICLASSICAL,         // vibrational initialization type
-                                                  RotationalInitializationType.CLASSICAL,               // rotational initialization type
-                                                  new HashMap<Integer,VibrationalInitializationType>(), // modes to keep undisplaced
-                                                  0.01,                                                 // harmonic tolerance in percent
-                                                  method,                                               // level of theory
-                                                  1.00                                                  // vibrational scale factor
-                                                  );
-        initializer.initialize(5);  // maxAttempts
-    }
 }

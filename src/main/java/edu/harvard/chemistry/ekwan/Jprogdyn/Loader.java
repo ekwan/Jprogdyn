@@ -466,12 +466,12 @@ public class Loader {
                                                            new ArrayList<InternalCoordinate.Condition>(), maximumNumberOfInitializationAttempts,
                                                            initializer, dynamicsMethod, nmrMethod, nmrPointInterval, checkpointFilename); 
                     trajectories.add(trajectory);
-                    trajectory.call();
                     System.out.printf("   Generated %s.\n", checkpointFilename);
 				}
-
+            System.out.println("Done generating trajectories.");
+            
             // run the trajectories
-            //TrajectoryExecutorService.runTrajectories(trajectories);
+            TrajectoryExecutorService.runTrajectories(trajectories);
         }
         else if ( jobType.equals("analysis") && trajectoryType.equals("nmr") ) {
             // run NMR trajectory analysis

@@ -21,6 +21,12 @@ public class GaussianJob implements Callable<GaussianResult>, Serializable {
     /** The input file to run. */
     public final GaussianInputFile gjf;
 
+    /** The maximum number of filenames in one Gaussian directory. */
+    public static final int MAX_FILENAMES = Loader.getInteger("gaussian_max_filenames");
+    
+    /** Where to run jobs. */
+    public static final String GAUSSIAN_DIRECTORY = String.format("%s/%s", Loader.getString("working_directory"), Loader.getString("gaussian_directory"));
+
     /**
      * Constructor.
      * @param gjf the name of the Gaussian input file to run
@@ -39,14 +45,15 @@ public class GaussianJob implements Callable<GaussianResult>, Serializable {
         int index = 0;
         
         // expand environment variable if necessary
+        
         counting:
-        for (int i=0; i < Loader.getInteger("gaussian_max_filenames"); i++) {
+        for (int i=0; i < MAX_FILENAMES; i++) {
             // get a new ID number for this job
             index = INDEX_GENERATOR.getAndIncrement();
             baseFilename = String.format("%s_gaussian_%010d", Loader.HOSTNAME, index);
 
             // don't allow this choice of filenames if any files with this prefix already exist
-            for ( File f : new File(Loader.getString("gaussian_directory")).listFiles() ) {
+            for ( File f : new File(GAUSSIAN_DIRECTORY).listFiles() ) {
                 if ( f.getName().startsWith(baseFilename) ) {
                     baseFilename = "";
                     continue counting;
@@ -54,7 +61,7 @@ public class GaussianJob implements Callable<GaussianResult>, Serializable {
             }
 
             // reset counter if necessary
-            if ( INDEX_GENERATOR.get() > Loader.getInteger("gaussian_max_filenames") )
+            if ( INDEX_GENERATOR.get() > MAX_FILENAMES )
                 INDEX_GENERATOR.getAndSet(0);
             break;
         }
@@ -62,22 +69,21 @@ public class GaussianJob implements Callable<GaussianResult>, Serializable {
             throw new IllegalArgumentException("Unable to set filename!");
 
         // write input files to disk
-        String jobDirectoryName = String.format("%s/%s/%s", Loader.getString("working_directory"), Loader.getString("gaussian_directory"),
-                                                baseFilename);
+        String jobDirectoryName = String.format("%s/%s", GAUSSIAN_DIRECTORY, baseFilename);
         File jobDirectory = new File(jobDirectoryName);
         boolean success = jobDirectory.mkdir();
         if ( !success )
-            throw new IllegalArgumentException("failed to create directory " + baseFilename);
-        gjf.write( Loader.getString("gaussian_directory") + baseFilename + "/gaussian.gjf" );
-        System.out.println(gjf);
-        System.exit(1);
+            throw new IllegalArgumentException("failed to create directory " + jobDirectoryName);
+        String gjfFilename = String.format("%s/gaussian.gjf", jobDirectoryName);
+        gjf.write(gjfFilename);
 
         // call Gaussian
         double elapsedTime = 0.0;
         try {
                 long startTime = System.currentTimeMillis();
                 
-                String runString = Loader.getString("gaussian_directory") + "/run_gaussian.sh " + Loader.getString("gaussian_directory") + baseFilename;
+                String runString = String.format("%s/run_gaussian.sh %s %s", GAUSSIAN_DIRECTORY, jobDirectoryName, baseFilename);
+                //System.out.println(runString);
                 Process process = Runtime.getRuntime().exec(runString);
                 int exitValue = process.waitFor();
                 long endTime = System.currentTimeMillis();
@@ -89,7 +95,8 @@ public class GaussianJob implements Callable<GaussianResult>, Serializable {
         }
 
         // retrieve output
-        GaussianResult result = new GaussianResult(Loader.getString("gaussian_directory") + baseFilename + "/gaussian.out", elapsedTime);
+        String outputFilename = String.format("%s/%s/gaussian.out", GAUSSIAN_DIRECTORY, baseFilename);
+        GaussianResult result = new GaussianResult(outputFilename, elapsedTime);
 	
         // remove files
         try {
