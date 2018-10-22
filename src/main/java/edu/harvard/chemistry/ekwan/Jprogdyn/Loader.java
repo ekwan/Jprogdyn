@@ -376,6 +376,7 @@ public class Loader {
 		int nmrPointInterval = 0;
 		String shieldingsFilename = null;
 	    String gaussianNmrRouteCard = null;
+        List<Set<Integer>> symmetryList = new ArrayList<>();  // list of sets, each set is 1-indexed atom numbers of degenerate atoms
 		if ( trajectoryType.equals("nmr") ) {
 			nmrPointInterval = getInteger("nmr_point_interval");
 			if ( nmrPointInterval < 1 )
@@ -391,22 +392,28 @@ public class Loader {
 
             try {
                 String symmetryGroupsString = getString("symmetry_groups");
-                String[] symmetryGroups = symmetryGroupsString.split(";");
-                Set<Integer> alreadySeen = new HashSet<>();
-                for (String symmetryGroup : symmetryGroups) {
-                    String fields[] = symmetryGroup.split(",");
-                    for (String s : fields) {
-                        int atomNumber = Integer.parseInt(s.trim());
-                        if ( atomNumber < 0 )
-                            throw new Exception();
-                        if ( alreadySeen.contains(atomNumber) )
-                            throw new Exception();
-                        alreadySeen.add(atomNumber);
+                if ( symmetryGroupsString.trim().length() > 0 ) {
+                    String[] symmetryGroups = symmetryGroupsString.split(";");
+                    Set<Integer> alreadySeen = new HashSet<>();
+                    for (String symmetryGroup : symmetryGroups) {
+                        String fields[] = symmetryGroup.split(",");
+                        Set<Integer> thisSet = new HashSet<>();
+                        for (String s : fields) {
+                            int atomNumber = Integer.parseInt(s.trim());
+                            if ( atomNumber < 0 )
+                                throw new Exception();
+                            if ( alreadySeen.contains(atomNumber) )
+                                throw new Exception();
+                            alreadySeen.add(atomNumber);
+                            thisSet.add(atomNumber);
+                        }
+                        symmetryList.add(thisSet);
                     }
                 }
             }
             catch (Exception e) {
-                quit("check symmetry groups string");
+                e.printStackTrace();
+                quit("check symmetry groups string: " + getString("symmetry_groups"));
             }
 		}
 
@@ -436,9 +443,19 @@ public class Loader {
             // read shieldings molecule
 			GaussianOutputFile shieldingsOutputFile = new GaussianOutputFile(shieldingsFilename);
 			Molecule shieldingsMolecule = shieldingsOutputFile.molecule;
+            if ( shieldingsMolecule.shieldings == null || shieldingsMolecule.shieldings.size() == 0 )
+                quit(String.format("NMR shieldings were expected, but not found in %s.", shieldingsFilename));
             System.out.printf("Read chemical shift data from %s.\n", shieldingsFilename);
+            
+            // check molecules are consistent
             if ( frequenciesMolecule.contents.size() != shieldingsMolecule.contents.size() )
                 quit("mismatch between frequency and shieldings molecules");
+            for (int i=0; i < frequenciesMolecule.contents.size(); i++) {
+                String e1 = frequenciesMolecule.contents.get(i).symbol;
+                String e2 = shieldingsMolecule.contents.get(i).symbol;
+                if ( ! e1.equals(e2) )
+                    quit(String.format("atom types did not match for atom %d (%s vs %s)", i+1, e1, e2));
+            }
 
 			// make calculation methods
 			String gaussianForceRouteCardFull = String.format("#p force %s", gaussianForceRouteCard);
@@ -487,9 +504,19 @@ public class Loader {
             // read shieldings molecule
 			GaussianOutputFile shieldingsOutputFile = new GaussianOutputFile(shieldingsFilename);
 			Molecule shieldingsMolecule = shieldingsOutputFile.molecule;
+            if ( shieldingsMolecule.shieldings == null || shieldingsMolecule.shieldings.size() == 0 )
+                quit(String.format("NMR shieldings were expected, but not found in %s.", shieldingsFilename));
             System.out.printf("Read chemical shift data from %s.\n", shieldingsFilename);
+            
+            // check molecules are consistent
             if ( frequenciesMolecule.contents.size() != shieldingsMolecule.contents.size() )
                 quit("mismatch between frequency and shieldings molecules");
+            for (int i=0; i < frequenciesMolecule.contents.size(); i++) {
+                String e1 = frequenciesMolecule.contents.get(i).symbol;
+                String e2 = shieldingsMolecule.contents.get(i).symbol;
+                if ( ! e1.equals(e2) )
+                    quit(String.format("atom types did not match for atom %d (%s vs %s)", i+1, e1, e2));
+            }
 
             // load trajectories
             Map<String,Trajectory> trajectories = TrajectoryAnalyzer.loadTrajectories(checkpointDirectory, checkpointPrefix);
@@ -505,21 +532,10 @@ public class Loader {
             // do NMR analysis
             System.out.println("\n=== NMR Raw Correction Analysis ===\n");
             
-            // make list of finished trajectories
-            List<Trajectory> finishedTrajectories = new ArrayList<>();
-            for (Trajectory t : trajectories.values()) {
-                if ( t.isDone() )
-                    finishedTrajectories.add(t);
-            }
-            if ( finishedTrajectories.size() == 0 )
-                quit("there are no trajectories to analyze");
-            System.out.printf("Analyzing %d complete trajectories...\n", finishedTrajectories.size());
-
             // calculate raw correction
-            List<Set<Integer>> symmetryList = new ArrayList<>();                                // each set contains the degenerate atom numbers
-            symmetryList.add(ImmutableSet.of(2,3,4,5));
-            NMRTrajectoryAnalyzer.NMRtrajectoryAnalysis analysis = NMRTrajectoryAnalyzer.analyze(finishedTrajectories, true,
-                                                                                                symmetryList, shieldingsMolecule);
+            List<Trajectory> trajectoriesList = new ArrayList<>(trajectories.values());
+            NMRTrajectoryAnalyzer.NMRtrajectoryAnalysis analysis = NMRTrajectoryAnalyzer.analyze(trajectoriesList, true, // ignore incomplete
+                                                                                                 symmetryList, shieldingsMolecule);
             System.out.println(analysis);
 
         }
