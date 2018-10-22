@@ -46,7 +46,9 @@ public class TrajectoryAnalyzer implements Immutable, Singleton
     {
         int globalPoints = 0;
         Map<String,Trajectory> returnMap = new LinkedHashMap<>();
-        for (File f : new File(directory).listFiles())
+        File[] files = new File(directory).listFiles();
+        Arrays.sort(files);
+        for (File f : files)
             {
                 String filename = f.getName();
                 if ( filename.startsWith(prefix) && filename.endsWith("chk") )
@@ -82,8 +84,8 @@ public class TrajectoryAnalyzer implements Immutable, Singleton
      */
     public static void analyzeStability(Map<String,Trajectory> trajectories)
     {
-        System.out.println("Trajectory                                       points     Std. Dev. (%)        Std. Dev. (kcal)");
-        System.out.println("                                                                             0.0                  5.0"); 
+        System.out.println("Trajectory                                         points      Std. Dev. (%)       Std. Dev. (kcal)");
+        System.out.println("                                                                               0.0                  5.0"); 
         for (String filename : trajectories.keySet())
             {
                 Trajectory t = trajectories.get(filename);
@@ -98,7 +100,7 @@ public class TrajectoryAnalyzer implements Immutable, Singleton
                 standardDeviation = standardDeviation * 627.509469;
                 long n = stats.getN();
                 String asciiBar = AsciiBar.make(standardDeviation, 0.0, 5.0, "*", " ", 20);
-                System.out.printf("%-30s           %4d        %9.6f%%      %s%-7.1f\n", filename, n, COV, asciiBar, standardDeviation);
+                System.out.printf("%-40s           %4d        %9.6f%%      %s%-7.1f\n", filename, n, COV, asciiBar, standardDeviation);
             }
     }
 

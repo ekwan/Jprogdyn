@@ -447,7 +447,7 @@ public class Loader {
 																			 memoryPerTrajectory, numberOfProcessorsPerTrajectory,
 																			 gaussianForceRouteCardFull, gaussianForceFooterFull);
             String gaussianNMRFooterFull = String.format("--Link1--\n%%chk=Jprogdyn.chk\n%%nprocshared=%d\n%%mem=%dGB\n#p NMR geom=allcheck guess=read %s",
-                                                         numberOfProcessorsPerTrajectory, memoryPerTrajectory, gaussianForceRouteCard);
+                                                         numberOfProcessorsPerTrajectory, memoryPerTrajectory, gaussianNmrRouteCard);
 			GaussianCalculationMethod nmrMethod = new GaussianCalculationMethod(CalculationMethod.CalculationType.NMR,
 																		        memoryPerTrajectory, numberOfProcessorsPerTrajectory,
 																		        gaussianForceRouteCardFull, gaussianNMRFooterFull);
@@ -457,7 +457,8 @@ public class Loader {
 			List<Trajectory> trajectories = new ArrayList<>(numberOfTotalTrajectories);
 			for (int i=0; i < numberOfTotalTrajectories; i++)
 				{
-                    String checkpointFilename = String.format("%s/%s/%s_%04d.chk", workingDirectory, checkpointDirectory, checkpointPrefix, i);
+                    String checkpointFilename = String.format("%s/%s_%04d.chk", checkpointDirectory, checkpointPrefix, i);
+                    System.out.println(checkpointFilename);
                     Initializer initializer = new Initializer(frequenciesMolecule, temperature, timestep, vibrationalInitializationDefault,
                                                               rotationalInitializationType,
                                                               specialModeInitializationMap,
@@ -466,7 +467,7 @@ public class Loader {
                                                            new ArrayList<InternalCoordinate.Condition>(), maximumNumberOfInitializationAttempts,
                                                            initializer, dynamicsMethod, nmrMethod, nmrPointInterval, checkpointFilename); 
                     trajectories.add(trajectory);
-                    System.out.printf("   Generated %s.\n", checkpointFilename);
+                    System.out.printf("   Will write trajectory to %s.\n", checkpointFilename);
 				}
             System.out.println("Done generating trajectories.");
             
@@ -476,11 +477,57 @@ public class Loader {
         else if ( jobType.equals("analysis") && trajectoryType.equals("nmr") ) {
             // run NMR trajectory analysis
             System.out.println("Will run NMR trajectory analysis.");
+            
+            // read frequency molecule
+            GaussianOutputFile frequenciesOutputFile = new GaussianOutputFile(frequencyFilename);
+            Molecule frequenciesMolecule = frequenciesOutputFile.molecule;
+            System.out.printf("Read frequency data from %s (%d atoms, %d normal modes).\n", frequencyFilename,
+                              frequenciesMolecule.contents.size(), frequenciesMolecule.modes.size());
+
+            // read shieldings molecule
+			GaussianOutputFile shieldingsOutputFile = new GaussianOutputFile(shieldingsFilename);
+			Molecule shieldingsMolecule = shieldingsOutputFile.molecule;
+            System.out.printf("Read chemical shift data from %s.\n", shieldingsFilename);
+            if ( frequenciesMolecule.contents.size() != shieldingsMolecule.contents.size() )
+                quit("mismatch between frequency and shieldings molecules");
+
+            // load trajectories
+            Map<String,Trajectory> trajectories = TrajectoryAnalyzer.loadTrajectories(checkpointDirectory, checkpointPrefix);
+            int totalPoints = 0;
+            for (Trajectory t : trajectories.values())
+                totalPoints += t.getPoints().size();
+        
+            // analyze trajectory stability
+            System.out.println("\n=== Trajectory Stability Analysis ===\n");
+            TrajectoryAnalyzer.analyzeStability(trajectories);
+            System.out.println();
+
+            // do NMR analysis
+            System.out.println("\n=== NMR Raw Correction Analysis ===\n");
+            
+            // make list of finished trajectories
+            List<Trajectory> finishedTrajectories = new ArrayList<>();
+            for (Trajectory t : trajectories.values()) {
+                if ( t.isDone() )
+                    finishedTrajectories.add(t);
+            }
+            if ( finishedTrajectories.size() == 0 )
+                quit("there are no trajectories to analyze");
+            System.out.printf("Analyzing %d complete trajectories...\n", finishedTrajectories.size());
+
+            // calculate raw correction
+            List<Set<Integer>> symmetryList = new ArrayList<>();                                // each set contains the degenerate atom numbers
+            symmetryList.add(ImmutableSet.of(2,3,4,5));
+            NMRTrajectoryAnalyzer.NMRtrajectoryAnalysis analysis = NMRTrajectoryAnalyzer.analyze(finishedTrajectories, true,
+                                                                                                symmetryList, shieldingsMolecule);
+            System.out.println(analysis);
+
         }
         else
             quit("unrecognized job type");
     
         // finished
         System.out.println("Jprogdyn has terminated successfully.");
+        System.exit(0);
     }
 }

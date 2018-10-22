@@ -272,7 +272,7 @@ public class Initializer implements Immutable, Serializable
                     doTSVibration(scratchPaper, mode, i, VelocitySign.RANDOMIZE);
                 else if ( type == VibrationalInitializationType.NONE )
                     {
-                        // do nothing
+                        System.out.printf("Not displacing mode %d (%.0f cm^-1).\n", i, mode.frequency);
                     }
                 else
                     throw new IllegalArgumentException("unsupported vibrational initialization type, should not be possible");
@@ -314,15 +314,16 @@ public class Initializer implements Immutable, Serializable
                 double actualPotentialEnergy  = candidate.potentialEnergy;            // in hartree
                 double difference = 100.0 * Math.abs((desiredPotentialEnergy - actualPotentialEnergy) / desiredPotentialEnergy);
                 double absoluteDifference = (actualPotentialEnergy - desiredPotentialEnergy)*Units.KCAL_PER_HARTREE;
+                double absoluteTolerance = (tolerance/100.0) * Math.abs(desiredPotentialEnergy) * Units.KCAL_PER_HARTREE;
                 if ( difference > tolerance )
                     {
-                        System.out.printf("Initialization failed by %.4f%% = %.1f kcal (%.4f desired PE in hartree, %.4f actual).\n",
-                                          difference, absoluteDifference, desiredPotentialEnergy, actualPotentialEnergy);
+                        System.out.printf("Initialization failed by %.4f%% = %.1f kcal (%.4f desired PE in hartree, %.4f actual, %.1f kcal tolerance).\n",
+                                          difference, absoluteDifference, desiredPotentialEnergy, actualPotentialEnergy, absoluteTolerance);
                     }
                 else
                     {
-                        System.out.printf("Initialization passed! (Deviation was %.4f%% = %.1f kcal, %.4f desired PE in hartree, %.4f actual)\n",
-                                          difference, absoluteDifference, desiredPotentialEnergy, actualPotentialEnergy);
+                        System.out.printf("Initialization passed! (Deviation was %.4f%% = %.1f kcal, %.4f desired PE in hartree, %.4f actual, %.1f kcal tolerance)\n",
+                                          difference, absoluteDifference, desiredPotentialEnergy, actualPotentialEnergy, absoluteTolerance);
                         return candidate;
                     }
             }
@@ -404,6 +405,7 @@ public class Initializer implements Immutable, Serializable
             thisPotentialEnergy = 0.0;
         
         scratchPaper.desiredPotentialEnergy += thisPotentialEnergy;
+        
         // update kinetic energy (hartree)
         double thisKineticEnergy = ( thisTotalEnergy / Units.KCAL_PER_HARTREE ) - thisPotentialEnergy;
         
@@ -482,7 +484,8 @@ public class Initializer implements Immutable, Serializable
         double shift = HarmonicOscillatorDistribution.drawRandomQuantumDisplacement(level, reducedMass, frequency, forceConstant);
         double maxShift = HarmonicOscillatorDistribution.getClassicalTurningPoint(thisTotalEnergy, forceConstant);
 
-        System.out.printf("Selected qc level %1d (%4.2f kcal) for mode %4d (%4.0f cm^-1; unscaled %4.0f cm^-1).  Shift is %5.0f%% (%5.2f of a possible %5.2f A).\n", level, thisTotalEnergy, modeIndex, frequency, frequency/scaleFactor, 100.0*(shift/maxShift), shift, maxShift);
+        System.out.printf("Selected qc level %1d (%4.2f kcal total) for mode %4d (%4.0f cm^-1; unscaled %4.0f cm^-1).  Shift is %5.0f%% (%5.2f of a possible %5.2f A).\n",
+                          level, thisTotalEnergy, modeIndex, frequency, frequency/scaleFactor, 100.0*(shift/maxShift), shift, maxShift);
 
         // displace and add velocities
         doVibration(mode, modeIndex, thisTotalEnergy, shift, scratchPaper, VelocitySign.RANDOMIZE);
@@ -509,6 +512,7 @@ public class Initializer implements Immutable, Serializable
 
         // get random displacement in angstroms
         double shift = HarmonicOscillatorDistribution.drawRandomClassicalDisplacement(thisTotalEnergy, forceConstant);
+        System.out.printf("Selected classical initialization for mode %4d (%4.0f cm^-1; unscaled %4.0f cm^-1).\n", modeIndex, frequency, frequency/scaleFactor);
 
         // displace and add velocities
         doVibration(mode, modeIndex, thisTotalEnergy, shift, scratchPaper, VelocitySign.RANDOMIZE);
@@ -533,6 +537,7 @@ public class Initializer implements Immutable, Serializable
 
         // get random displacement in angstroms
         double shift = HarmonicOscillatorDistribution.drawRandomUniformDisplacement(thisTotalEnergy, forceConstant);
+        System.out.printf("Selected uniform initialization for mode %4d (%4.0f cm^-1; unscaled %4.0f cm^-1).\n", modeIndex, frequency, frequency/scaleFactor);
 
         // displace and add velocities
         doVibration(mode, modeIndex, thisTotalEnergy, shift, scratchPaper, VelocitySign.RANDOMIZE);
@@ -550,12 +555,20 @@ public class Initializer implements Immutable, Serializable
     {
         // draw the total energy for this mode from a Boltzmann distribution
         double thisTotalEnergy = RotationalBoltzmann.getRandomBoltzmannEnergy(temperature);  // kcal/mol
+        double frequency = scaleFactor * mode.frequency;
 
         // do not displace this mode
         double shift = 0.0;
-
+        
         // displace and add velocities
         doVibration(mode, modeIndex, thisTotalEnergy, shift, scratchPaper, velocitySign);
+        
+        String velocityString = velocityRecord.get(modeIndex) > 0.0 ? "positive" : "negative";
+        if ( velocityRecord.get(modeIndex) == 0.0 )
+            velocityString = "zero.";
+        System.out.printf("Did not displace transition state mode %4d (%4.0f cm^-1; unscaled %4.0f cm^-1).  Velocity is %s.\n",
+                          modeIndex, frequency, frequency/scaleFactor, velocityString);
+
     }
 
     /**
