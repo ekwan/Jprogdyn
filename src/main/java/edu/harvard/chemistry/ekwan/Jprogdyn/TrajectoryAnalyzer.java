@@ -115,11 +115,16 @@ public class TrajectoryAnalyzer implements Immutable, Singleton
                                        int pointInterval,
                                        Map<List<InternalCoordinate.Condition>,String> references)
     {
+        if ( coordinates == null || coordinates.size() == 0 )
+            throw new IllegalArgumentException("coordinates are null or empty");
+
         // determine min and max for each coordinate
         List<Double> minima = new ArrayList<>(coordinates.size());
         List<Double> maxima = new ArrayList<>(coordinates.size());
         for (InternalCoordinate coordinate : coordinates)
             {
+                if ( coordinate == null )
+                    throw new IllegalArgumentException("null coordinates are not allowed");
                 Double thisMinimum = null;
                 Double thisMaximum = null;
                 for (String filename : trajectories.keySet())
@@ -279,27 +284,34 @@ public class TrajectoryAnalyzer implements Immutable, Singleton
 
     /**
      * Writes a text file of the internal coordinates as a function of time for all trajectories.
-     * @param trajectories the trajectories to analyze
-     * @param coordinates the coordinates to analyze
+     * @param trajectoriesMap map from trajectory to CSV output filename
+     * @param coordinates the coordinates to print out
      */
-    public static void writeScatter(Map<String,Trajectory> trajectories, List<InternalCoordinate> coordinates)
+    
+    public static void writeScatter(Map<Trajectory,String> trajectoriesMap, List<InternalCoordinate> coordinates)
     {
-        for (String filename : trajectories.keySet())
-            {
-                Trajectory t = trajectories.get(filename);
-                String outputFilename = filename.replace(".chk", ".dat");
-                outputFilename.replace(".bak", "");
-                outputFilename = "checkpoints/" + outputFilename;
-                StringBuilder sb = new StringBuilder();
-                List<TrajectoryPoint> points = t.getPoints();
-                for (TrajectoryPoint p : points)
-                    {
-                        sb.append(String.format("%6.0f ", p.time));
-                        for (InternalCoordinate c : coordinates)
-                            sb.append(String.format("%10.4f", c.getValue(p.positions)));
-                        sb.append("\n");
-                    }
-                InputFileFormat.writeStringToDisk(sb.toString(), outputFilename);
+        if ( trajectoriesMap == null || trajectoriesMap.size() == 0 )
+            throw new IllegalArgumentException("null or empty trajectories");
+        if ( coordinates == null || coordinates.size() == 0 )
+            throw new IllegalArgumentException("null or empty coordinates");
+
+        for (Trajectory t : trajectoriesMap.keySet()) {
+            String CSVfilename = trajectoriesMap.get(t);
+            StringBuilder sb = new StringBuilder();
+            List<TrajectoryPoint> points = t.getPoints();
+            String header = "time";
+            for (InternalCoordinate c : coordinates)
+                header += "," + c.description;
+            header += "\n";
+            sb.append(header);
+            for (TrajectoryPoint p : points) {
+                sb.append(String.format("%.2f", p.time));
+                for (InternalCoordinate c : coordinates)
+                    sb.append(String.format(",%.4f", c.getValue(p.positions)));
+                sb.append("\n");
             }
+            InputFileFormat.writeStringToDisk(sb.toString(), CSVfilename);
+            System.out.printf("Wrote internal coordinate data to %s.\n", CSVfilename);
+        }
     }
 }

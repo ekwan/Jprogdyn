@@ -12,3 +12,4 @@ buildNumber.properties
 *.swp
 gaussian/*
 checkpoints/*
+analysis/*

@@ -61,6 +61,8 @@ This will place the result in:
 
 You may need to adjust the `gaussian.sh` script in the `gaussian/` folder before running these tutorials.  This script is run whenever *Jprogdyn* calls out to Gaussian.  Place system-specific tasks in this script, like setting the scratch directory, or adjusting file permissions.
 
+Configuration files for these tutorials are stored in the `tutorials/` folder.
+
 ### Reaction Trajectory Tutorial
 
 In this tutorial, we reproduce the quasiclassical trajectory analysis in our [study](#ref1) of nucleophilic aromatic substitution reactions.  
@@ -95,7 +97,7 @@ The job has been setup in `NMR_tutorial_trajectories.config`.  The following ref
 
 - You can increase `number_of_trajectories` if desired to get more precision.
 
-To run the job, go to the *Jprogdyn* directory and type: `mvn compile` then `mvn exec:java -Dconfig.filename="NMR_tutorial_trajectories.config"`.
+To run the job, go to the *Jprogdyn* directory and type: `mvn compile` then `mvn exec:java -Dconfig.filename="tutorials/methane_NMR_trajectories.config"`.
 
 This job should take approximately 1-2 hours on a modern machine.  If the individual (non-NMR) points (`eval time`) are taking more than 30 seconds, that would be abnormally slow.  We'd be glad to help you if you're having 
 trouble.
@@ -104,7 +106,7 @@ The trajectories will be written to the `checkpoints/` folder as files like `met
 
 3. **Analyze Trajectories**
 
-The job has been setup in `NMR_tutorial_analysis.config`.  The following refer to entries within that file:
+The job has been setup in `tutorials/methane_NMR_analysis.config`.  The following refer to entries within that file:
 
 - `trajectory_type : nmr` and `job_type : trajectory` requests that an analysis of existing trajectories be run.
 
@@ -112,6 +114,9 @@ The job has been setup in `NMR_tutorial_analysis.config`.  The following refer t
 
 - Incomplete trajectories will be ignored.
 
+- Some additional information regarding the stability of the total energy and internal coordinates is provided.  Movies that can be viewed in MOLDEN are written as `.traj` files to the `analysis/` folder.  CSV files of some sample internal coordinates over time are written to the same location.
+
+To run the job, type `mvn exec:java -Dconfig.filename="tutorials/methane_NMR_analysis.config"`.  (There is no need to recompile.)
 
 4. **Examine Results**
 

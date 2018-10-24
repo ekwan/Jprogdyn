@@ -61,7 +61,8 @@ public class Loader {
 													  "scale_factor","vibrational_initialization_default","vibrational_initialization_override",
 													  "rotational_initialization_type","termination_condition",
 													  "nmr_point_interval","shieldings_file","gaussian_nmr_route_card",
-													  "gaussian_nmr_footer","symmetry_groups");
+													  "gaussian_nmr_footer","symmetry_groups","analysis_directory","make_molden_movies",
+                                                      "summarize_trajectories_to_screen","summary_interval","analysis_coordinate","write_analysis_csv");
 
         // read and parse configuration file
         File configFile = new File(CONFIG_FILENAME);
@@ -92,7 +93,7 @@ public class Loader {
                 // store values
                 if ( configStringsMap.containsKey(key) ) {
                     // this is a duplicate
-                    if ( key.equals("termination_condition") ) {
+                    if ( key.equals("termination_condition") || key.equals("analysis_coordinate") ) {
                         String currentValue = configStringsMap.get(key);
                         String newValue = String.format("%s;%s", currentValue, value);
                         configStringsMap.put(key, newValue);
@@ -361,7 +362,7 @@ public class Loader {
                     else if ( coordinateType.equals("torsion") && fields.length == 8 ) {
                         InternalCoordinate.Torsion torsion = new InternalCoordinate.Torsion(Integer.parseInt(fields[1])-1, Integer.parseInt(fields[2])-1,
                                                                                             Integer.parseInt(fields[3])-1, Integer.parseInt(fields[4])-1, description);
-                        new InternalCoordinate.Condition(torsion, conditionType, value);
+                        condition = new InternalCoordinate.Condition(torsion, conditionType, value);
                     }
                     else
                         throw new Exception();
@@ -416,6 +417,70 @@ public class Loader {
                 quit("check symmetry groups string: " + getString("symmetry_groups"));
             }
 		}
+
+        String analysisDirectory = String.format("%s/%s", workingDirectory, getString("analysis_directory"));
+        if ( ! new File(analysisDirectory).isDirectory() )
+            quit(String.format("analysis directory %s not found", analysisDirectory));
+
+        boolean makeMoldenMovies = false;
+        if ( getString("make_molden_movies").toLowerCase().equals("yes") )
+            makeMoldenMovies = true;
+
+        boolean summarizeTrajectoriesToScreen = false;
+        if ( getString("summarize_trajectories_to_screen").toLowerCase().equals("yes") )
+            summarizeTrajectoriesToScreen = true;
+
+        int summaryInterval = 0;
+        try {
+            summaryInterval = Integer.parseInt(getString("summary_interval"));
+            if ( summaryInterval < 1 || summaryInterval > 100 )
+                throw new Exception();
+        }
+        catch (Exception e) {
+            quit("check summary_interval: " + getString("summary_interval"));
+        }
+
+        String analysisCoordinatesString = getString("analysis_coordinate");
+        List<InternalCoordinate> analysisCoordinates = new LinkedList<>();
+        
+        if ( ! analysisCoordinatesString.equals("no_analysis_coordinates") && jobType.equals("analysis") ) {
+            String analysisCoordinatesStringSplit[] = analysisCoordinatesString.split(";");
+            for (String analysisCoordinateString : analysisCoordinatesStringSplit) {
+                try {
+                    String[] fields = analysisCoordinateString.split(",");
+                    for (int i=0; i < fields.length; i++)
+                        fields[i] = fields[i].trim();
+                    
+                    String description = fields[fields.length-1];
+                    InternalCoordinate internalCoordinate = null;
+                    String coordinateType = fields[0].toLowerCase();
+                    
+                    if ( coordinateType.equals("bond_length") && fields.length == 4 ) {
+                        internalCoordinate = new InternalCoordinate.Length(Integer.parseInt(fields[1])-1, Integer.parseInt(fields[2])-1, description);
+                    }
+
+                    else if ( coordinateType.equals("bond_angle") && fields.length == 5 ) {
+                        internalCoordinate = new InternalCoordinate.Angle(Integer.parseInt(fields[1])-1, Integer.parseInt(fields[2])-1,
+                                                                          Integer.parseInt(fields[3])-1, description);
+                    }
+
+                    else if ( coordinateType.equals("torsion") && fields.length == 6 ) {
+                        internalCoordinate = new InternalCoordinate.Torsion(Integer.parseInt(fields[1])-1, Integer.parseInt(fields[2])-1,
+                                                                            Integer.parseInt(fields[3])-1, Integer.parseInt(fields[4])-1, description);
+                    }
+                    else
+                        throw new Exception();
+                    analysisCoordinates.add(internalCoordinate);
+                }
+                catch (Exception e) {
+                    quit(String.format("check analysis coordinate string: %s", analysisCoordinateString));
+                }
+            }
+        }
+
+        boolean writeAnalysisCSV = false;
+        if ( getString("write_analysis_csv").toLowerCase().equals("yes") )
+            writeAnalysisCSV = true;
 
         // ready to go
         System.out.println("Loaded configuration data successfully.");
@@ -475,7 +540,6 @@ public class Loader {
 			for (int i=0; i < numberOfTotalTrajectories; i++)
 				{
                     String checkpointFilename = String.format("%s/%s_%04d.chk", checkpointDirectory, checkpointPrefix, i);
-                    System.out.println(checkpointFilename);
                     Initializer initializer = new Initializer(frequenciesMolecule, temperature, timestep, vibrationalInitializationDefault,
                                                               rotationalInitializationType,
                                                               specialModeInitializationMap,
@@ -529,10 +593,33 @@ public class Loader {
             TrajectoryAnalyzer.analyzeStability(trajectories);
             System.out.println();
 
-            // do NMR analysis
-            System.out.println("\n=== NMR Raw Correction Analysis ===\n");
+            // make MOLDEN movies if requested
+            if ( makeMoldenMovies ) {
+                TrajectoryAnalyzer.makeMovies(trajectories, analysisDirectory);
+            }
+
+            // do geometry analysis if requested
+            if ( summarizeTrajectoriesToScreen && analysisCoordinates.size() > 0 ) {
+                Map<List<InternalCoordinate.Condition>,String> references = new LinkedHashMap<>();
+                TrajectoryAnalyzer.analyzeGeometry(trajectories,           // the trajectories to analyze
+                                                   analysisCoordinates,    // the geometric parameters to measure
+                                                   summaryInterval,        // how often to measure the geometric parameters in points
+                                                   references );           // assume no starting material/product definitions for an nmr trajectory
+            }
+    
+            // write CSV file of internal coordinates as a function of time for each trajectory
+            if ( writeAnalysisCSV ) {
+                Map<Trajectory,String> trajectoriesMap = new LinkedHashMap<>();
+                for (String checkpointFilename : trajectories.keySet()) {
+                    Trajectory t = trajectories.get(checkpointFilename);
+                    String analysisCSVfilename = String.format("%s/%s", analysisDirectory, checkpointFilename.replaceAll("\\.chk$",".csv"));
+                    trajectoriesMap.put(t, analysisCSVfilename);
+                }
+                TrajectoryAnalyzer.writeScatter(trajectoriesMap, analysisCoordinates);    
+            }
             
-            // calculate raw correction
+            // calculate raw corrections
+            System.out.println("\n=== NMR Raw Correction Analysis ===\n");
             List<Trajectory> trajectoriesList = new ArrayList<>(trajectories.values());
             NMRTrajectoryAnalyzer.NMRtrajectoryAnalysis analysis = NMRTrajectoryAnalyzer.analyze(trajectoriesList, true, // ignore incomplete
                                                                                                  symmetryList, shieldingsMolecule);
