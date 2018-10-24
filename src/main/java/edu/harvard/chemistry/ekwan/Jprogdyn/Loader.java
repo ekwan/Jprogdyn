@@ -483,6 +483,7 @@ public class Loader {
             writeAnalysisCSV = true;
 
         // ready to go
+        System.out.println(new Date());
         System.out.println("Loaded configuration data successfully.");
         System.out.printf("Jprogdyn is running on host %s.\n", HOSTNAME);
 
@@ -490,6 +491,41 @@ public class Loader {
         if ( jobType.equals("trajectory") && trajectoryType.equals("reaction") ) {
             // run reaction trajectories
             System.out.println("Will run reaction trajectories.");
+        
+            // read frequency molecule
+            GaussianOutputFile frequenciesOutputFile = new GaussianOutputFile(frequencyFilename);
+            Molecule frequenciesMolecule = frequenciesOutputFile.molecule;
+            System.out.printf("Read frequency data from %s (%d atoms, %d normal modes).\n", frequencyFilename,
+                              frequenciesMolecule.contents.size(), frequenciesMolecule.modes.size());
+
+
+			// make calculation methods
+			String gaussianForceRouteCardFull = String.format("#p force %s", gaussianForceRouteCard);
+            String gaussianForceFooterFull = String.format("%s\n", gaussianForceFooter);
+            CalculationMethod dynamicsMethod = new GaussianCalculationMethod(CalculationMethod.CalculationType.ENERGY_AND_FORCE,
+																			 memoryPerTrajectory, numberOfProcessorsPerTrajectory,
+																			 gaussianForceRouteCardFull, gaussianForceFooterFull);
+
+            // create the requested trajectories
+            System.out.println("Generating trajectories...");
+			List<Trajectory> trajectories = new ArrayList<>(numberOfTotalTrajectories);
+			for (int i=0; i < numberOfTotalTrajectories; i++)
+				{
+                    String checkpointFilename = String.format("%s/%s_%04d.chk", checkpointDirectory, checkpointPrefix, i);
+                    Initializer initializer = new Initializer(frequenciesMolecule, temperature, timestep, vibrationalInitializationDefault,
+                                                              rotationalInitializationType,
+                                                              specialModeInitializationMap,
+                                                              harmonicTolerance, dynamicsMethod, scaleFactor);
+                    Trajectory trajectory = new Trajectory(frequenciesMolecule, timestep, numberOfForwardPoints, numberOfBackwardPoints,
+                                                           terminationConditions, maximumNumberOfInitializationAttempts,
+                                                           initializer, dynamicsMethod, null, 0, checkpointFilename); 
+                    trajectories.add(trajectory);
+                    System.out.printf("   Will write trajectory to %s.\n", checkpointFilename);
+				}
+            System.out.println("Done generating trajectories.");
+            
+            // run the trajectories
+            TrajectoryExecutorService.runTrajectories(trajectories);
         }
         else if ( jobType.equals("analysis") && trajectoryType.equals("reaction") ) {
             // run reaction trajectory analysis
@@ -631,6 +667,7 @@ public class Loader {
     
         // finished
         System.out.println("Jprogdyn has terminated successfully.");
+        System.out.println(new Date());
         System.exit(0);
     }
 }
