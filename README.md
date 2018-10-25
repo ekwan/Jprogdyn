@@ -224,7 +224,7 @@ In general, a timestep of 1.0 fs is a good compromise between speed (fewer traje
 
 ### Visualizing Trajectories
 
-You can visualize the trajectories with [MOLDEN](http://cheminf.cmbi.ru.nl/molden/).
+You can visualize the trajectories with [MOLDEN](http://cheminf.cmbi.ru.nl/molden/).  Run *Jprogdyn* in analysis mode and set `make_molden_movies` to `yes`.  One `.traj` file per trajectory will be written to the `analysis_directory` folder.  These can be opened directly by MOLDEN.
 
 ### Parallel Execution
 
