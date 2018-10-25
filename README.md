@@ -228,8 +228,10 @@ When running NMR trajectories, simulations should be run both forwards and backw
 
 When running reaction trajectories, it can be helpful to run full trajectories (e.g., 500 fs forwards and 500 fs backwards) when doing exploratory work.  However, once a trajectory reaches a minimum (e.g., the product) it usually does not leave, so many points may be wasted.  To define termination conditions for the S<sub>N</sub>Ar tutorial:
 
-`termination_condition : bond_length, 8, 13, C-F, greater_than, 3.0`
-`termination_condition : bond_length, 8, 17, C-Cl, greater_than, 4.0`
+```
+termination_condition : bond_length, 8, 13, C-F, greater_than, 3.0
+termination_condition : bond_length, 8, 17, C-Cl, greater_than, 4.0
+```
 
 This stops the trajectories once the C-F bond distance is greater than 3.0 A (meaning this is a starting material structure) or the C-Cl bond distance is greater than 4.0 A (meaning this is a product structure).  (It is possible to end up at starting material, even if the trajectories are initialized in the forward direction, because of recrossing.)
 
