@@ -334,7 +334,7 @@ public class Loader {
         String terminationConditionsString = getString("termination_condition");
         List<InternalCoordinate.Condition> terminationConditions = new LinkedList<>();
         
-        if ( ! terminationConditionsString.equals("no_termination_conditions") && jobType.equals("trajectory") ) {
+        if ( ! terminationConditionsString.equals("no_termination_conditions") ) {
             String terminationConditionsSplit[] = terminationConditionsString.split(";");
             for (String terminationCondition : terminationConditionsSplit) {
                 try {
@@ -498,7 +498,6 @@ public class Loader {
             System.out.printf("Read frequency data from %s (%d atoms, %d normal modes).\n", frequencyFilename,
                               frequenciesMolecule.contents.size(), frequenciesMolecule.modes.size());
 
-
 			// make calculation methods
 			String gaussianForceRouteCardFull = String.format("#p force %s", gaussianForceRouteCard);
             String gaussianForceFooterFull = String.format("%s\n", gaussianForceFooter);
@@ -530,7 +529,51 @@ public class Loader {
         else if ( jobType.equals("analysis") && trajectoryType.equals("reaction") ) {
             // run reaction trajectory analysis
             System.out.println("Will run reaction trajectory analysis.");
-        }
+            
+            // read frequency molecule
+            GaussianOutputFile frequenciesOutputFile = new GaussianOutputFile(frequencyFilename);
+            Molecule frequenciesMolecule = frequenciesOutputFile.molecule;
+            System.out.printf("Read frequency data from %s (%d atoms, %d normal modes).\n", frequencyFilename,
+                              frequenciesMolecule.contents.size(), frequenciesMolecule.modes.size());
+
+            // load trajectories
+            Map<String,Trajectory> trajectories = TrajectoryAnalyzer.loadTrajectories(checkpointDirectory, checkpointPrefix);
+            int totalPoints = 0;
+            for (Trajectory t : trajectories.values())
+                totalPoints += t.getPoints().size();
+        
+            // analyze trajectory stability
+            System.out.println("\n=== Trajectory Stability Analysis ===\n");
+            TrajectoryAnalyzer.analyzeStability(trajectories);
+            System.out.println();
+
+            // make MOLDEN movies if requested
+            if ( makeMoldenMovies ) {
+                TrajectoryAnalyzer.makeMovies(trajectories, analysisDirectory);
+            }
+
+            // do geometry analysis if requested
+            if ( summarizeTrajectoriesToScreen && analysisCoordinates.size() > 0 ) {
+                Map<List<InternalCoordinate.Condition>,String> references = new LinkedHashMap<>();
+                for (InternalCoordinate.Condition terminationCondition : terminationConditions)
+                    references.put(ImmutableList.of(terminationCondition), terminationCondition.internalCoordinate.description);
+                TrajectoryAnalyzer.analyzeGeometry(trajectories,           // the trajectories to analyze
+                                                   analysisCoordinates,    // the geometric parameters to measure
+                                                   summaryInterval,        // how often to measure the geometric parameters in points
+                                                   references);           // labels some geometries as being starting material, product, etc.
+            }
+    
+            // write CSV file of internal coordinates as a function of time for each trajectory
+            if ( writeAnalysisCSV ) {
+                Map<Trajectory,String> trajectoriesMap = new LinkedHashMap<>();
+                for (String checkpointFilename : trajectories.keySet()) {
+                    Trajectory t = trajectories.get(checkpointFilename);
+                    String analysisCSVfilename = String.format("%s/%s", analysisDirectory, checkpointFilename.replaceAll("\\.chk$",".csv"));
+                    trajectoriesMap.put(t, analysisCSVfilename);
+                }
+                TrajectoryAnalyzer.writeScatter(trajectoriesMap, analysisCoordinates);    
+            }
+         }
         else if ( jobType.equals("trajectory") && trajectoryType.equals("nmr") ) {
             // run NMR trajectories
             System.out.println("Will run NMR trajectories.");
