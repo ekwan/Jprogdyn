@@ -83,7 +83,7 @@ In this tutorial, we reproduce the quasiclassical trajectory analysis in our [st
 
 This reaction was studied at B3LYP/6-31+G*/PCM(DMF) and found to be concerted on the potential energy surface, but pseudo-stepwise on the free energy surface.
 
-On my fairly nice computer with 36 Intel cores are 128 GB from 2017, the four trajectories (1000 fs each) take about 12 hours to run.
+On an Intel node with 36 cores and 128 GB from 2017, the four trajectories (1000 fs each) took about 30 hours to run.  (See the section on [termination conditions](#termination-conditions) to stop the trajectories when they have reached a defined structure.  This tutorial file does not have any termination conditions set, but they can be added, and will speed up the trajectory calculations a great deal.)
 
 1. **Gather Files**
 
@@ -119,7 +119,7 @@ On my fairly nice computer with 36 Intel cores are 128 GB from 2017, the four tr
 
 In this tutorial, we reproduce the rovibrational correction to the NMR shifts of methane reported in our [2015 study](#ref2).  We will compute trajectories on the B3LYP/MIDI! surface, calculate NMR shieldings every 8 points using B3LYP/cc-pVDZ, and analyze the results to obtain the raw rovibrational corrections.  The expected values are: -4.22 ppm (<sup>13</sup>C) and -0.64 ppm (<sup>1</sup>H).
 
-On my fairly nice computer with 36 Intel cores are 128 GB from 2017, the 25 trajectories (250 fs each) take several hours to run.
+On an Intel node with 36 cores and 128 GB from 2017, the 25 trajectories (250 fs each) took about 3 hours to run.
 
  1. **Gather Files**
 
@@ -221,6 +221,21 @@ Trajectories are propagated using the Velocity Verlet algorithm.  From Wikipedia
 <img src="img/velocity_verlet_velocity.svg" height=40>
 
 In general, a timestep of 1.0 fs is a good compromise between speed (fewer trajectory points) and accuracy (avoiding integration error).  Quasiclassical trajectories should not be extended more than ~500 fs forwards or backwards, due to unphysical intramolecular vibrational redistribution.
+
+### Termination Conditions
+
+When running NMR trajectories, simulations should be run both forwards and backwards for the full 125 fs in both directions.  This ensures proper sampling of the vibrational correction.  Set `termination_conditions : no_termination_conditions` to request this behavior.
+
+When running reaction trajectories, it can be helpful to run full trajectories (e.g., 500 fs forwards and 500 fs backwards) when doing exploratory work.  However, once a trajectory reaches a minimum (e.g., the product) it usually does not leave, so many points may be wasted.  To define termination conditions for the S<sub>N</sub>Ar tutorial:
+
+`termination_condition : bond_length, 8, 13, C-F, greater_than, 3.0`
+`termination_condition : bond_length, 8, 17, C-Cl, greater_than, 4.0`
+
+This stops the trajectories once the C-F bond distance is greater than 3.0 A (meaning this is a starting material structure) or the C-Cl bond distance is greater than 4.0 A (meaning this is a product structure).  (It is possible to end up at starting material, even if the trajectories are initialized in the forward direction, because of recrossing.)
+
+In `job_type : trajectory` mode, forward points are run, and then backward points.  If the termination conditions are reached in the forward direction, the trajectory will be stopped, and no further points will be evaluated.  The termination conditions are not checked for backward points.
+
+In `job_type : analysis` mode, these termination conditions are used to label the outcomes of the trajectories.  You could change `C-F` to `starting_material` to have a more descriptive report.
 
 ### Visualizing Trajectories
 
