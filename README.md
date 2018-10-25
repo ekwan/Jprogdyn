@@ -99,7 +99,9 @@ On an Intel node with 36 cores and 128 GB from 2017, the four trajectories (1000
 
 2. **Run Trajectories**
 
- The job has been setup in `tutorials/reaction_tutorial_trajectories.config`.  The following refer to entries within that file:
+ To run the trajectories, type `mvn exec:java -Dconfig.filename="tutorials/reaction_tutorial_trajectories.config"`.  (You may want to place this command inside of a script so that it can dispatched to a job queueing system.)
+ 
+ The following refer to entries within the configuration file:
 
  - `frequency_file : dinitro_Cl_F-1H2O-ts-b3lyp_d3bj-631+gd-dmf_pcm.out`  This is the file containing the structure to initialize the dynamics from.  It should contain one (and only one) `freq=hpmodes` job.
  - Please adjust `number_of_simultaneous trajectories`, `number_of_processors_per_trajectory`, and `memory_per_trajectory` as appropriate for your system.
@@ -107,10 +109,36 @@ On an Intel node with 36 cores and 128 GB from 2017, the four trajectories (1000
  - `gaussian_force_footer` is blank, but this would be the place to put any special basis sets or other directives.
  - `checkpoint_prefix` is what the checkpoints filenames for each trajectory will start with.
  - `vibrational_initialization_default : quasiclassical` and `vibrational_initialization_override : 0:ts_positive` mean to initialize all normal modes quasiclasically and, only for mode 0, initialize with no displacement and give the reaction forward velocity in the transition mode.  The sign of the transition mode is arbitrary and depends on which geometry you define as products (see the discussion on [transition modes](#transition-modes) below).
-- `rotational_initialization_type : classical` means to start rotating the molecule a small amount.
-- `termination_condition : no_termination_conditions` means to let the trajectories run for the complete time (i.e., run all forward and backward points).  These conditions can also used for the analysis step (see below) and tell *Jprogdyn* which internal coordinates to analyze in the next ste.
+ - `rotational_initialization_type : classical` means to start rotating the molecule a small amount.
+ - `termination_condition : no_termination_conditions` means to let the trajectories run for the complete time (i.e., run all forward and backward points).  These conditions can also used for the analysis step (see below) and tell *Jprogdyn* which internal coordinates to analyze in the next ste.
 
 3. **Analyze Trajectories**
+
+ To analyze the trajectories, type `mvn exec:java -Dconfig.filename="tutorials/reaction_tutorial_analysis.config"`.
+ 
+ - The "trajectory stability analysis" shows some statistics about the variability of the total energy in each trajectory:
+
+ The standard deviation of each trajectory is shown as an `AsciiBar`.  The standard deviation in kcal for each trajectory is shown to the right of the square brackets.  The asterisk in each `AsciiBar` marks the approximate standard deviation, with `0.0` and `5.0` indicating the limits of the scale.  In general, the standard deviation should be less than 0.0001%.  We recommend discarding any trajectories with unusually high standard deviations.  You can do so simply by deleting the `.chk` and `.chk.bak` files associated with the bad trajectories and re-running the same input file as you used to run the trajectories.
+ 
+ - The "geometry analysis" shows key geometric parameters as a function of time for each trajectory.  Here is an example of a trajectory that went to product:
+
+ 
+ - It is also possible for a trajectory to recross.  In this example, recrossing from product to product was found:
+
+ - Statistics on all outcomes are also shown:
+
+
+ - If requested, `.traj` files will be written to the `analysis/` folder, with one `.traj` file per trajectory.  These movies can be played with MOLDEN.
+
+ - `.csv` files containing key bond lengths, angles, or torsions for each trajectory can also be written to disk.  You can control this behavior using the `analysis_coordinate` keyword.  To turn this off, set `write_analysis_csv` to `no`.
+ 
+ 
+ 
+ - Note that the `termination_conditions` section has been populated (and it wasn't for the running of the trajectories).  This defines a set of reference conditions so that *Jprogdyn* can identify whether trajectories reached starting material, product, or some other known state.
+
+
+
+ Note that it is possible to analyze trajectories before they are finished. There should be no ill effects on any running trajectories.
 
 4. **Examine Results**
 
@@ -235,9 +263,9 @@ termination_condition : bond_length, 8, 17, C-Cl, greater_than, 4.0
 
 This stops the trajectories once the C-F bond distance is greater than 3.0 A (meaning this is a starting material structure) or the C-Cl bond distance is greater than 4.0 A (meaning this is a product structure).  (It is possible to end up at starting material, even if the trajectories are initialized in the forward direction, because of recrossing.)
 
-In `job_type : trajectory` mode, forward points are run, and then backward points.  If the termination conditions are reached in the forward direction, the trajectory will be stopped, and no further points will be evaluated.  The termination conditions are not checked for backward points.
+In `job_type : trajectory` mode, forward points are run, and then backward points.  If the termination conditions are reached in the forward direction, the trajectory will be stopped, and no further points will be evaluated.  The termination conditions are not checked for backward points.  Note that it is currently not possible to join termination conditions together.  It would be possible to alter the `checkTerminationConditions` method in `Trajectory.java` to accomplish this as a temporary hack.
 
-In `job_type : analysis` mode, these termination conditions are used to label the outcomes of the trajectories.  You could change `C-F` to `starting_material` to have a more descriptive report.
+In `job_type : analysis` mode, these termination conditions are used to label the outcomes of the trajectories.  You could change `C-F` to `starting_material` to have a more descriptive report.  It is also not possible to join termination conditions for the analysis, but the `analyzeGeometry` method in `TrajectoryAnalyzer.java` takes lists of conditions.  Every condition in each list must be met for its corresponding condition to be declared as reached.  You could play with this, but it might be easier to dump out a CSV of the internal coordinates and analyze them in a third-party program.
 
 ### Visualizing Trajectories
 

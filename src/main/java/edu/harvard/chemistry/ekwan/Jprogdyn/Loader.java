@@ -45,6 +45,7 @@ public class Loader {
             configFilename = customConfigFilename;
         if ( ! new File(configFilename).isFile() ) {
             System.out.printf("Error: couldn't find configuration file: %s.\n", configFilename);
+            System.out.println("Example configuration files are in the tutorials/ folder.");
             System.exit(1);
         }
         CONFIG_FILENAME = configFilename;
