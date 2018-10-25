@@ -116,31 +116,99 @@ On an Intel node with 36 cores and 128 GB from 2017, the four trajectories (1000
 
  To analyze the trajectories, type `mvn exec:java -Dconfig.filename="tutorials/reaction_tutorial_analysis.config"`.
  
+4. **Examine Results**
+
  - The "trajectory stability analysis" shows some statistics about the variability of the total energy in each trajectory:
+
+```
+=== Trajectory Stability Analysis ===
+
+Trajectory                                         points      Std. Dev. (%)       Std. Dev. (kcal)
+                                                                               0.0                  5.0
+SNAr_tutorial_0000.chk                             1000         0.000079%       [  *                 ] 0.6
+SNAr_tutorial_0001.chk                             1000         0.000063%       [ *                  ] 0.5
+SNAr_tutorial_0002.chk                             1000         0.000070%       [  *                 ] 0.6
+SNAr_tutorial_0003.chk                             1000         0.000056%       [ *                  ] 0.4
+```
 
  The standard deviation of each trajectory is shown as an `AsciiBar`.  The standard deviation in kcal for each trajectory is shown to the right of the square brackets.  The asterisk in each `AsciiBar` marks the approximate standard deviation, with `0.0` and `5.0` indicating the limits of the scale.  In general, the standard deviation should be less than 0.0001%.  We recommend discarding any trajectories with unusually high standard deviations.  You can do so simply by deleting the `.chk` and `.chk.bak` files associated with the bad trajectories and re-running the same input file as you used to run the trajectories.
  
  - The "geometry analysis" shows key geometric parameters as a function of time for each trajectory.  Here is an example of a trajectory that went to product:
 
+ ```
+SNAr_tutorial_0001.chk (complete)
+
+Time(fs)        C-F                             C-Cl
+
+ -500      [                 *  ] 8.41     [*                   ] 1.76
+ -400      [                 *  ] 8.42     [*                   ] 1.77
+ -300      [              *     ] 7.21     [*                   ] 1.67
+ -200      [           *        ] 5.97     [*                   ] 1.87
+ -100      [     *              ] 3.62     [*                   ] 1.70
+    0      [ *                  ] 1.84     [*                   ] 1.76
+  100      [*                   ] 1.40     [*                   ] 1.85
+  200      [*                   ] 1.45     [*                   ] 2.00
+  300      [*                   ] 1.30     [   *                ] 3.02
+  400      [*                   ] 1.37     [        *           ] 5.09
+  500      [*                   ] 1.47     [             *      ] 6.83
+  500      [*                   ] 1.47     [             *      ] 6.83
+product reached after 356 fs.
+```
  
  - It is also possible for a trajectory to recross.  In this example, recrossing from product to product was found:
 
+```
+SNAr_tutorial_0000.chk (complete)
+
+Time(fs)        C-F                             C-Cl
+
+ -500      [*                   ] 1.26     [           *        ] 5.99
+ -400      [*                   ] 1.35     [     *              ] 3.85
+ -300      [*                   ] 1.38     [ *                  ] 2.22
+ -200      [*                   ] 1.54     [*                   ] 1.88
+ -100      [*                   ] 1.47     [*                   ] 1.86
+    0      [ *                  ] 1.85     [*                   ] 1.82
+  100      [*                   ] 1.41     [*                   ] 1.83
+  200      [*                   ] 1.40     [ *                  ] 2.36
+  300      [*                   ] 1.41     [       *            ] 4.43
+  400      [*                   ] 1.27     [            *       ] 6.54
+  500      [*                   ] 1.33     [                  * ] 8.68
+  500      [*                   ] 1.33     [                  * ] 8.68
+product reached after 284 fs.
+```
+
  - Statistics on all outcomes are also shown:
 
+```
+=== Summary of Trajectories ===
+
+Species                       Trajs          %
+starting_material                 0          0
+product                           4        100
+unknown (incomplete)              0          0
+unknown (complete)                0          0
+
+4 trajectories total.
+```
 
  - If requested, `.traj` files will be written to the `analysis/` folder, with one `.traj` file per trajectory.  These movies can be played with MOLDEN.
 
+ `Wrote internal coordinate data to share_root/ekwan/Jprogdyn/analysis/SNAr_tutorial_0000.csv.`
+
  - `.csv` files containing key bond lengths, angles, or torsions for each trajectory can also be written to disk.  You can control this behavior using the `analysis_coordinate` keyword.  To turn this off, set `write_analysis_csv` to `no`.
  
+```
+time,C-F,C-Cl
+-500.00,1.2585,5.9894
+-499.00,1.2775,5.9754
+-498.00,1.3012,5.9590
+```
  
+ Data like this can be processed in many standard programs like Excel.
  
  - Note that the `termination_conditions` section has been populated (and it wasn't for the running of the trajectories).  This defines a set of reference conditions so that *Jprogdyn* can identify whether trajectories reached starting material, product, or some other known state.
 
-
-
- Note that it is possible to analyze trajectories before they are finished. There should be no ill effects on any running trajectories.
-
-4. **Examine Results**
+ - Note that it is possible to analyze trajectories before they are finished. There should be no ill effects on any running trajectories.
 
 
 ### NMR Trajectory Tutorial
