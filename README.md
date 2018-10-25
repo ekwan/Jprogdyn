@@ -7,7 +7,7 @@
     - [Features](#features)
     - [Installation](#installation)
     - [Javadoc](#javadoc)
-  
+
   - [Tutorials](#tutorials)
    - [Reaction Trajectory Tutorial](#reaction-trajectory-tutorial)
    - [NMR Trajectory Tutorial](#nmr-trajectory-tutorial)
@@ -45,23 +45,35 @@ That's it!  If you encounter any problems during the build process, please let u
 
 ### Javadoc
 
-*Jprogdyn* is open-source software and the code is extensively documented through a Javadoc to facilitate modifications.
-
-To build the javadoc:
+*Jprogdyn* is open-source software.  To facilitate modifications to the code, there is an extensive javadoc.  To build the javadoc:
 
 `mvn javadoc:javadoc`
 
 This will place the result in:
 
-`Jprogdyn/target/site/apidocs/edu/harvard/chemistry/ekwan/Jprogdyn/package-summary.html`.
+`Jprogdyn/target/site/apidocs/edu/harvard/chemistry/ekwan/Jprogdyn/package-summary.html`
 
 ## Tutorials
 
-*Jprogdyn* can run trajectories for studying reactions or computing rovibrational corrections to NMR shifts.
-
-You may need to adjust the `gaussian.sh` script in the `gaussian/` folder before running these tutorials.  This script is run whenever *Jprogdyn* calls out to Gaussian.  Place system-specific tasks in this script, like setting the scratch directory, or adjusting file permissions.
-
 Configuration files for these tutorials are stored in the `tutorials/` folder.
+
+### Running *Jprogdyn*
+
+The behavior of *Jprogdyn* is controlled by a configuration file (by default, `Jprogdyn.config`).  *Jprogdyn* operates trajectories in two modes, called `job_type`:
+
+- `job_type : reaction` means to run a reaction trajectory.  This means that no NMR shieldings will be calculated.  Trajectories that reach predefined geometric conditions (e.g., bonds lengths matching the product) will be stopped before completing.
+- `job_type : nmr` means to run a trajectory for the purpose of calculating the rovibrational correction to the NMR shieldings.  NMR shieldings will be calculated every `nmr_interval` points and trajectories will not be stopped before they have reached the specified `number_of_forward_points` and `number_of_backward_points`.
+
+*Jprogdyn* does its work in two phases:
+
+- `job_type : trajectory` means to run trajectories
+- `job_type : analysis` means to analyze the trajectories by loading in `.chk` files (please see below).
+
+In some cases, it may be possible to analyze incomplete trajectories, but we generally don't recommend this unless you know what you're doing.
+
+*Jprogdyn* will run up to `number_of_simultaneous_trajectories` at once on one node.  Please use your local computing cluster queueing system to run trajectories on more than one node at a time.  The progress of each trajectory is saved every `checkpoint_interval` points.  To restart jobs, simply re-run the same configuration file that generated the interrupted trajectories.  Note that each trajectory is saved to a `.chk` file, but the previous checkpoint is always backed up to a `.chk.bak` file so that an uncorrupted checkpoint is always available if *Jprogdyn* is interrupted while writing to a checkpoint.  You can safely delete these files when the trajectories are complete.
+
+There are a lot more options in the configuration file.  More details for some options are given below and in comments in the configuration file itself.
 
 ### Reaction Trajectory Tutorial
 
@@ -69,59 +81,92 @@ In this tutorial, we reproduce the quasiclassical trajectory analysis in our [st
 
 <img src="img/reaction.png" height=100>
 
-This reaction was studied at B3LYP/6-31+G*/PCM and found to be concerted on the potential energy surface, but pseudo-stepwise on the free energy surface.
+This reaction was studied at B3LYP/6-31+G*/PCM(DMF) and found to be concerted on the potential energy surface, but pseudo-stepwise on the free energy surface.
 
-### NMR Trajectory Tutorial
-
-In this tutorial, we reproduce the rovibrational correction to the NMR shifts of methane reported in our [2015 study](#ref2).  We will compute trajectories on the B3LYP/MIDI! surface, calculate NMR shieldings every 8 points using B3LYP/cc-pVDZ, and analyze the results to obtain the raw rovibrational corrections.  The reported values are: -4.22 ppm (<sup>13</sup>C) and -0.64 ppm (<sup>1</sup>H).
+On an Intel node with 36 cores and 128 GB from 2017, the four trajectories (1000 fs each) took about 30 hours to run.  (See the section on [termination conditions](#termination-conditions) to stop the trajectories when they have reached a defined structure.  This tutorial file does not have any termination conditions set, but they can be added, and will speed up the trajectory calculations a great deal.)
 
 1. **Gather Files**
 
-The test files are provided in the `test_files` folder:
+ You only need one Gaussian file to run this job: the transition state (on the potential energy surface) for this S<sub>N</sub>Ar reaction.  Generally all trajectories should be initialized from stationary points.  If you don't, the harmonic approximation will be poor, and it won't be possible to initialize the trajectories properly.  Please ensure you are running dynamics at the exact same level of theory that you found your transition state at.  (This is not checked!)
 
-*Stationary Geometry*: Methane optimized with the route card `#p b3lyp/midix opt freq=(noraman,hpmodes)`, stored in `methane_b3lyp_midix.out`.
+ *Stationary Geometry*: Fluoride + 2,4-dinitro-1-chlorobenzene (stored in `test_files/dinitro_Cl_F-1H2O-ts-b3lyp_d3bj-631+gd-dmf_pcm.out`).  The route card used was:
+ 
+ ```
+#p opt=(calcfc,ts,noeigentest) freq=(noraman,hpmodes) b3lyp scrf=(solvent=n,n-dimethylformamide,pcm) empiricaldispersion=gd3bj 6-31+g*`
+```
 
-*Shieldings*: The geometry from the previous file run with the route card `#p b3lyp/cc-pvdz NMR`, stored in `methane_b3lyp_midix_NMR_b3lyp_dz.out`.
-
-If you want to calculate another system, please **double-check** that you are using the same geometry for both files, the dynamics level of theory matches the level of theory for the stationary geometry, and the NMR level of theory matches the level of theory for the shieldings file.  These criteria are not checked by *Jprogdyn* and errors will render the results completely meaningless.
+ Please ensure you use the `freq=hpmodes` in your frequency files.
 
 2. **Run Trajectories**
 
-The job has been setup in `NMR_tutorial_trajectories.config`.  The following refer to entries within that file:
+ The job has been setup in `tutorials/reaction_tutorial_trajectories.config`.  The following refer to entries within that file:
 
-- `trajectory_type : nmr` and `job_type : trajectory` requests that NMR trajectories be run.
-
-- Filenames of the Gaussian files are given in `frequency_file` and `shieldings_file`.
-
-- Please adjust `number_of_simultaneous trajectories`, `number_of_processors_per_trajectory`, and `memory_per_trajectory` as appropriate for your system.
-
-- You can increase `number_of_trajectories` if desired to get more precision.
-
-To run the job, go to the *Jprogdyn* directory and type: `mvn compile` then `mvn exec:java -Dconfig.filename="tutorials/methane_NMR_trajectories.config"`.
-
-This job should take approximately 1-2 hours on a modern machine.  If the individual (non-NMR) points (`eval time`) are taking more than 30 seconds, that would be abnormally slow.  We'd be glad to help you if you're having 
-trouble.
-
-The trajectories will be written to the `checkpoints/` folder as files like `methane_0000.chk`.  If the job gets interrupted, you can restart it simply by re-running it.  The trajectories will pick up from where they left off automatically.
+ - `frequency_file : dinitro_Cl_F-1H2O-ts-b3lyp_d3bj-631+gd-dmf_pcm.out`  This is the file containing the structure to initialize the dynamics from.  It should contain one (and only one) `freq=hpmodes` job.
+ - Please adjust `number_of_simultaneous trajectories`, `number_of_processors_per_trajectory`, and `memory_per_trajectory` as appropriate for your system.
+ - `gaussian_force_route_card`: the route card to use for propagating trajectories with single-point Gaussian force calculations.  Notice `#p` should not be entered here.
+ - `gaussian_force_footer` is blank, but this would be the place to put any special basis sets or other directives.
+ - `checkpoint_prefix` is what the checkpoints filenames for each trajectory will start with.
+ - `vibrational_initialization_default : quasiclassical` and `vibrational_initialization_override : 0:ts_positive` mean to initialize all normal modes quasiclasically and, only for mode 0, initialize with no displacement and give the reaction forward velocity in the transition mode.  The sign of the transition mode is arbitrary and depends on which geometry you define as products (see the discussion on [transition modes](#transition-modes) below).
+- `rotational_initialization_type : classical` means to start rotating the molecule a small amount.
+- `termination_condition : no_termination_conditions` means to let the trajectories run for the complete time (i.e., run all forward and backward points).  These conditions can also used for the analysis step (see below) and tell *Jprogdyn* which internal coordinates to analyze in the next ste.
 
 3. **Analyze Trajectories**
 
-The job has been setup in `tutorials/methane_NMR_analysis.config`.  The following refer to entries within that file:
+4. **Examine Results**
 
-- `trajectory_type : nmr` and `job_type : trajectory` requests that an analysis of existing trajectories be run.
 
-- The checkpoints are assumed to be in `checkpoint_directory` and all `.chk` files starting with `checkpoint_prefix` will be read in.
+### NMR Trajectory Tutorial
 
-- Incomplete trajectories will be ignored.
+In this tutorial, we reproduce the rovibrational correction to the NMR shifts of methane reported in our [2015 study](#ref2).  We will compute trajectories on the B3LYP/MIDI! surface, calculate NMR shieldings every 8 points using B3LYP/cc-pVDZ, and analyze the results to obtain the raw rovibrational corrections.  The expected values are: -4.22 ppm (<sup>13</sup>C) and -0.64 ppm (<sup>1</sup>H).
 
-- Some additional information regarding the stability of the total energy and internal coordinates is provided.  Movies that can be viewed in MOLDEN are written as `.traj` files to the `analysis/` folder.  CSV files of some sample internal coordinates over time are written to the same location.
+On an Intel node with 36 cores and 128 GB from 2017, the 25 trajectories (250 fs each) took about 3 hours to run.
 
-To run the job, type `mvn exec:java -Dconfig.filename="tutorials/methane_NMR_analysis.config"`.  (There is no need to recompile.)
+ 1. **Gather Files**
+
+ The test files are provided in the `test_files` folder:
+
+ *Stationary Geometry*: Methane optimized with the route card `#p b3lyp/midix opt freq=(noraman,hpmodes)`, stored in `methane_b3lyp_midix.out`.
+
+ *Shieldings*: The geometry from the previous file run with the route card `#p b3lyp/cc-pvdz NMR`, stored in `methane_b3lyp_midix_NMR_b3lyp_dz.out`.
+
+ If you want to calculate another system, please **double-check** that you are using the same geometry for both files, the dynamics level of theory matches the level of theory for the stationary geometry, and the NMR level of theory matches the level of theory for the shieldings file.  These criteria are not checked by *Jprogdyn* and errors will render the results completely meaningless.
+
+2. **Run Trajectories**
+
+ The job has been setup in `tutorials/NMR_tutorial_trajectories.config`.  The following refer to entries within that file:
+
+ - `trajectory_type : nmr` and `job_type : trajectory` requests that NMR trajectories be run.
+
+ - Filenames of the Gaussian files are given in `frequency_file` and `shieldings_file`.
+
+ - Please adjust `number_of_simultaneous trajectories`, `number_of_processors_per_trajectory`, and `memory_per_trajectory` as appropriate for your system.
+
+ - You can increase `number_of_trajectories` if desired to get more precision.
+
+ To run the job, go to the *Jprogdyn* directory and type: `mvn compile` then `mvn exec:java -Dconfig.filename="tutorials/methane_NMR_trajectories.config"`.
+
+ This job should take approximately 1-2 hours on a modern machine.  If the individual (non-NMR) points (`eval time`) are taking more than 30 seconds, that would be abnormally slow.  We'd be glad to help you if you're having 
+trouble.
+
+ The trajectories will be written to the `checkpoints/` folder as files like `methane_0000.chk`.  If the job gets interrupted, you can restart it simply by re-running it.  The trajectories will pick up from where they left off automatically.
+
+3. **Analyze Trajectories**
+
+ The job has been setup in `tutorials/methane_NMR_analysis.config`.  The following refer to entries within that file:
+
+ - `trajectory_type : nmr` and `job_type : trajectory` requests that an analysis of existing trajectories be run.
+
+ - The checkpoints are assumed to be in `checkpoint_directory` and all `.chk` files starting with `checkpoint_prefix` will be read in.
+
+ - Incomplete trajectories will be ignored.
+
+ - Some additional information regarding the stability of the total energy and internal coordinates is provided.  Movies that can be viewed in MOLDEN are written as `.traj` files to the `analysis/` folder.  CSV files of some sample internal coordinates over time are written to the same location.
+
+ To run the job, type `mvn exec:java -Dconfig.filename="tutorials/methane_NMR_analysis.config"`.  (There is no need to recompile.)
 
 4. **Examine Results**
 
-The last part of the output file will provide the raw corrections:
-
+ The last part of the output file will provide the raw corrections:
 
 ```
 === NMR Raw Correction Analysis ===
@@ -133,9 +178,9 @@ Element:  Atom Numbers:                   Raw Correction:     Std. Err.:      St
    C        1                                  -4.36            0.218           1.09
 ```
 
-Because these numbers were derived from a limited number of stochastic simulations, the numbers differ slightly from the reported numbers.  The standard error bar is the raw correction plus or minus the standard error.
+ Because these numbers were derived from a limited number of stochastic simulations, the numbers differ slightly from the expected ones.  The standard error bar is the raw correction plus or minus the standard error.
 
-To calculate the predicted NMR shift, you will need a raw correction for the reference (e.g. TMS) or use linear scaling.  You will also need to calculate the stationary shieldings for the molecule at a high level of theory.  Please see [reference 2](#ref2) for details.
+ To calculate the predicted NMR shift, you will also need to calculate a raw correction for the reference (e.g. TMS) as well as the stationary shieldings for the molecule at a high level of theory.  Alternatively, you can calculate a series of compounds and linearly scale your absolute shieldings to experimental values.  Please see [reference 2](#ref2) for details.
 
 ## Notes
 
@@ -177,9 +222,26 @@ Trajectories are propagated using the Velocity Verlet algorithm.  From Wikipedia
 
 In general, a timestep of 1.0 fs is a good compromise between speed (fewer trajectory points) and accuracy (avoiding integration error).  Quasiclassical trajectories should not be extended more than ~500 fs forwards or backwards, due to unphysical intramolecular vibrational redistribution.
 
+### Termination Conditions
+
+When running NMR trajectories, simulations should be run both forwards and backwards for the full 125 fs in both directions.  This ensures proper sampling of the vibrational correction.  Set `termination_conditions : no_termination_conditions` to request this behavior.
+
+When running reaction trajectories, it can be helpful to run full trajectories (e.g., 500 fs forwards and 500 fs backwards) when doing exploratory work.  However, once a trajectory reaches a minimum (e.g., the product) it usually does not leave, so many points may be wasted.  To define termination conditions for the S<sub>N</sub>Ar tutorial:
+
+```
+termination_condition : bond_length, 8, 13, C-F, greater_than, 3.0
+termination_condition : bond_length, 8, 17, C-Cl, greater_than, 4.0
+```
+
+This stops the trajectories once the C-F bond distance is greater than 3.0 A (meaning this is a starting material structure) or the C-Cl bond distance is greater than 4.0 A (meaning this is a product structure).  (It is possible to end up at starting material, even if the trajectories are initialized in the forward direction, because of recrossing.)
+
+In `job_type : trajectory` mode, forward points are run, and then backward points.  If the termination conditions are reached in the forward direction, the trajectory will be stopped, and no further points will be evaluated.  The termination conditions are not checked for backward points.
+
+In `job_type : analysis` mode, these termination conditions are used to label the outcomes of the trajectories.  You could change `C-F` to `starting_material` to have a more descriptive report.
+
 ### Visualizing Trajectories
 
-You can visualize the trajectories with [MOLDEN](http://cheminf.cmbi.ru.nl/molden/).
+You can visualize the trajectories with [MOLDEN](http://cheminf.cmbi.ru.nl/molden/).  Run *Jprogdyn* in analysis mode and set `make_molden_movies` to `yes`.  One `.traj` file per trajectory will be written to the `analysis_directory` folder.  These can be opened directly by MOLDEN.
 
 ### Parallel Execution
 
