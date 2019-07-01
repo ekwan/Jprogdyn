@@ -114,6 +114,8 @@ public class GaussianOutputFile extends OutputFileFormat {
         }
 
         // read normal modes if available (assumes freq=hpmodes is set)
+        // regular frequency calculations have only two dashes and should not be read:
+        // e.g:  Frequencies --    133.4685               189.8890               264.6334
         List<Double> frequencies = new ArrayList<>();
         List<Double> reducedMasses = new ArrayList<>();
         List<Double> forceConstants = new ArrayList<>();
@@ -126,7 +128,7 @@ public class GaussianOutputFile extends OutputFileFormat {
                 for (int j=2; j < fields.size(); j++) {
                     if ( fields.get(j).indexOf("*") > -1 ) {
                             System.out.println("Warning: invalid frequency ignored.");
-                            skipJ.add(j+1);  // have to account for the fact that frequencies is on word
+                            skipJ.add(j+1);  // have to account for the fact that frequencies is one word
                                              // but reduced masses and force constants are two words
                         }
                     else
