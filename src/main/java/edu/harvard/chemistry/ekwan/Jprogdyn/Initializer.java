@@ -226,16 +226,44 @@ public class Initializer implements Immutable, Serializable
 
         /**
          * Creates a time zero trajectory point using the displaced positions and xyz velocities that have been calculated during initialization.
+         * @return a new TrajectoryPoint
          */
-        public TrajectoryPoint createTrajectoryPoint()
-        {
+        public TrajectoryPoint createTrajectoryPoint() {
+            int numberOfAtoms = startingGeometry.size();
             List<Vector3D> positions = new ArrayList<>(startingGeometry);
-            for (int i=0; i < positions.size(); i++)
+            for (int i=0; i < numberOfAtoms; i++)
                 positions.set(i, positions.get(i).add(displacements.get(i)));
             return TrajectoryPoint.create(0.0, positions, velocities);
         }
+
+        /**
+         * Generates the perturbed geometry.
+         * @param the molecule with the starting geometry
+         * @return a new molecule containing the perturbed geometry.
+         */
+        public Molecule createMolecule(Molecule templateMolecule) {
+            int numberOfAtoms = startingGeometry.size();
+            List<Vector3D> newPositions = new ArrayList<>(numberOfAtoms);
+            for (int i=0; i < numberOfAtoms; i++) {
+                Vector3D oldPosition = startingGeometry.get(i);
+                Vector3D newPosition = oldPosition.add(displacements.get(i));
+                newPositions.add(newPosition);
+            }
+            return templateMolecule.setPositions(newPositions);
+        }
     }
 
+    /**
+     * Creates a structure based on the initialization parameters.
+     * Meant for generating thermal initializations for benchmarks.
+     * @param originalMolecule the unperturbed geometry
+     * @return a perturbed geometry
+     */
+    public Molecule generateStructure(Molecule originalMolecule) {
+        ScratchPaper scratchPaper = createCandidate();
+        return scratchPaper.createMolecule(originalMolecule);
+    }
+    
     /**
      * Makes a t=0 trajectory point for a trajectory but does not evaluate it.  Can be called multiple
      * times on the same object; repeated calls are statistically independent.  If the desired and actual

@@ -28,7 +28,7 @@ public class HarmonicTest extends TestCase
     }
 
     /**
-     * 
+     * Read the molecule, create displacements, then write the results to a set of .gjf files.
      */
     public void testHarmonic()
     {

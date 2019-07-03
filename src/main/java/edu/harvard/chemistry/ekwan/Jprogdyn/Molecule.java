@@ -92,13 +92,32 @@ public class Molecule implements Immutable, Serializable {
      * Get the positions of the atoms.
      * @return the atomic positions
      */
-    public List<Vector3D> getPositions()
-    {
+    public List<Vector3D> getPositions() {
         List<Vector3D> positions = new ArrayList<>(contents.size());
         for (Atom a : contents)
             positions.add(a.position);
         return positions;
     }
+
+    /**
+     * Returns a new molecule with the specified positions.
+     * @param newPositions the new positions
+     * @return copy of this molecule with the new positions 
+     */
+    public Molecule setPositions(List<Vector3D> newPositions) {
+        int numberOfAtoms = contents.size();
+        if ( newPositions.size() != numberOfAtoms )
+            throw new IllegalArgumentException("size of new positions array does not match number of atoms");
+        List<Atom> newContents = new ArrayList<>(numberOfAtoms);
+        for (int i=0; i < numberOfAtoms; i++) {
+            Atom oldAtom = contents.get(i);
+            Vector3D newPosition = newPositions.get(i);
+            Atom newAtom = oldAtom.shift(newPosition);
+            newContents.add(newAtom);
+        }
+        return new Molecule(newContents, modes, forces, name, charge, multiplicity, 0.0, new ArrayList<Double>());
+    }
+
 
     /**
      * Counts the number of heavy atoms.
