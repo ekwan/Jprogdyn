@@ -497,6 +497,7 @@ public class Initializer implements Immutable, Serializable
     private void doQuasiclassicalVibration(ScratchPaper scratchPaper, NormalMode mode, int modeIndex)
     {
         // choose vibrational level
+        double originalFrequency = mode.frequency;
         double frequency = scaleFactor * mode.frequency; // cm-1
         if ( frequency < MINIMUM_FREQUENCY )
             frequency = MINIMUM_FREQUENCY;
@@ -512,8 +513,8 @@ public class Initializer implements Immutable, Serializable
         double shift = HarmonicOscillatorDistribution.drawRandomQuantumDisplacement(level, reducedMass, frequency, forceConstant);
         double maxShift = HarmonicOscillatorDistribution.getClassicalTurningPoint(thisTotalEnergy, forceConstant);
 
-        System.out.printf("Selected qc level %1d (%4.2f kcal total) for mode %4d (%4.0f cm^-1; unscaled %4.0f cm^-1).  Shift is %5.0f%% (%5.2f of a possible %5.2f A).\n",
-                          level, thisTotalEnergy, modeIndex, frequency, frequency/scaleFactor, 100.0*(shift/maxShift), shift, maxShift);
+        System.out.printf("Selected qc level %1d (%4.2f kcal total) for mode %4d (%5.0f cm^-1; unscaled %5.0f cm^-1).  Shift is %5.0f%% (%5.2f of a possible %5.2f A).\n",
+                          level, thisTotalEnergy, modeIndex, frequency, originalFrequency, 100.0*(shift/maxShift), shift, maxShift);
 
         // displace and add velocities
         doVibration(mode, modeIndex, thisTotalEnergy, shift, scratchPaper, VelocitySign.RANDOMIZE);
