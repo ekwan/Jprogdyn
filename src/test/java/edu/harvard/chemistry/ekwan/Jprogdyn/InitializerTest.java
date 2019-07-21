@@ -36,14 +36,14 @@ public class InitializerTest extends TestCase
     public void testInitializer()
     {
         // displacement parameters
-        String moleculeFilename = "test_files/simple-bridging-ts-b3lyp_d3bj-juntz-gas.out";      // filename to read modes from
+        String moleculeFilename = "test_files/simple-neutral-ts-b3lyp_d3bj-juntz-gas.out";      // filename to read modes from
         double temperature = 298.0;                                                              // in K
         int numberOfInitializations = 100;                                                       // how many files to make
         Map<Integer,Initializer.VibrationalInitializationType> specialModeInitializationMap = new HashMap<>();  // zero-indexed mode number --> initialization type
         specialModeInitializationMap.put(0,Initializer.VibrationalInitializationType.NONE);      // don't displace the TS mode
 
         // Gaussian parameters
-        String outputPrefix = "analysis/simple-bridging-ts-b3lyp_d3bj-juntz-gas";
+        String outputPrefix = moleculeFilename.replace("test_files","analysis").replace(".out","");
         String footer = "\n";
 
         // read molecule
