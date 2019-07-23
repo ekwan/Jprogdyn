@@ -65,8 +65,6 @@ public class HarmonicTestGaussian extends TestCase
         String footer = "\n";
 
         // loop through all matching filenames
-        //String path = "/Users/ekwan/research/grid/benchmark/simple-anionic";
-        //String glob = "simple-anionic-ts-*-631+gd-gas.out";
         String path = "test_files";
         String glob = "simple*ts*m062x*631+gd*.out";
         try ( DirectoryStream<Path> dirStream = Files.newDirectoryStream( Paths.get(path), glob)) {
@@ -160,94 +158,9 @@ public class HarmonicTestGaussian extends TestCase
                 String outputFullFilename = String.format("%s/%s", outputDirectory, outputFilename);
                 InputFileFormat.writeStringToDisk(outputStringBuilder.toString(),outputFullFilename);
                 System.out.printf(">>> Wrote %d geometries to %s.\n", numberOfGeometries, outputFullFilename);
-	
-/*
-                if ( frequency > 0.0 ) {
-                    ZPE = Initializer.getZeroPointEnergy(frequency);     // kcal/mol
-                    maxShift = HarmonicOscillatorDistribution.getClassicalTurningPoint(ZPE, forceConstant);  // Angstroms
-                
-					// generate input files
-					for (double relativeShift = relativeShiftMin; relativeShift <= relativeShiftMax; relativeShift += relativeShiftInterval) {
-						// calculate displacements
-						List<Vector3D> finalPositions = new ArrayList<>(frequenciesMolecule.contents.size());
-						for (int i=0; i < normalModeCoordinates.size(); i++) {
-							Vector3D direction = normalModeCoordinates.get(i);
-							Vector3D currentPosition = frequenciesMolecule.contents.get(i).position;
-							Vector3D displacement = direction.scalarMultiply(relativeShift * maxShift);
-							Vector3D finalPosition = currentPosition.add(displacement);
-							finalPositions.add(finalPosition);
-						}
-
-						// write out molecule
-						StringBuilder s = new StringBuilder();
-						s.append(String.format("%%mem=%dGB\n", memory));
-						s.append(String.format("%%nprocshared=%d\n", processors));
-						s.append(routeCard + String.format("\n\ndisplacement: %.6f A\n\n", relativeShift * maxShift));
-						s.append(String.format("%d %d\n", frequenciesMolecule.charge, frequenciesMolecule.multiplicity));
-						for (int i=0; i < frequenciesMolecule.contents.size(); i++) {
-							String symbol = frequenciesMolecule.contents.get(i).symbol;
-							double x = finalPositions.get(i).getX();
-							double y = finalPositions.get(i).getY();
-							double z = finalPositions.get(i).getZ();
-							s.append(String.format("   %-5s     %15.10f    %15.10f    %15.10f\n", symbol, x, y, z));
-						}
-						if ( footer.trim().length() > 0 )
-							s.append(footer + "\n");
-						s.append("\n\n");
-						String shiftString = String.format("%03.0f", Math.abs(relativeShift) * 100.0);
-						if ( relativeShift < 0 && Math.abs(relativeShift) > 0.0001 )
-							shiftString = "m" + shiftString;
-						String filename = String.format("%s-%s-%s.gjf", outputPrefix, shiftString, outputSuffix);
-						InputFileFormat.writeStringToDisk(s.toString(),filename);
-						System.out.printf("Wrote to %s (absolute displacement=%.6f A, relative displacement = %.3f).\n", filename, relativeShift * maxShift, relativeShift);
-					}
-                }
-				else {
-				}
-                */
             }
         }
         catch (Exception e) { e.printStackTrace(); }
         assertTrue( true );
-
-/*
-		
-
-        // generate input files
-        for (double relativeShift = relativeShiftMin; relativeShift <= relativeShiftMax; relativeShift += relativeShiftInterval) {
-            // calculate displacements
-            List<Vector3D> finalPositions = new ArrayList<>(frequenciesMolecule.contents.size());
-            for (int i=0; i < normalModeCoordinates.size(); i++) {
-                Vector3D direction = normalModeCoordinates.get(i);
-                Vector3D currentPosition = frequenciesMolecule.contents.get(i).position;
-                Vector3D displacement = direction.scalarMultiply(relativeShift * maxShift);
-                Vector3D finalPosition = currentPosition.add(displacement);
-                finalPositions.add(finalPosition);
-            }
-
-            // write out molecule
-            StringBuilder s = new StringBuilder();
-            s.append(String.format("%%mem=%dGB\n", memory));
-            s.append(String.format("%%nprocshared=%d\n", processors));
-            s.append(routeCard + String.format("\n\ndisplacement: %.6f A\n\n", relativeShift * maxShift));
-            s.append(String.format("%d %d\n", frequenciesMolecule.charge, frequenciesMolecule.multiplicity));
-            for (int i=0; i < frequenciesMolecule.contents.size(); i++) {
-                String symbol = frequenciesMolecule.contents.get(i).symbol;
-                double x = finalPositions.get(i).getX();
-                double y = finalPositions.get(i).getY();
-                double z = finalPositions.get(i).getZ();
-                s.append(String.format("   %-5s     %15.10f    %15.10f    %15.10f\n", symbol, x, y, z));
-            }
-            if ( footer.trim().length() > 0 )
-            	s.append(footer + "\n");
-        	s.append("\n\n");
-            String shiftString = String.format("%03.0f", Math.abs(relativeShift) * 100.0);
-            if ( relativeShift < 0 && Math.abs(relativeShift) > 0.0001 )
-                shiftString = "m" + shiftString;
-            String filename = String.format("%s-%s-%s.gjf", outputPrefix, shiftString, outputSuffix);
-            InputFileFormat.writeStringToDisk(s.toString(),filename);
-            System.out.printf("Wrote to %s (absolute displacement=%.6f A, relative displacement = %.3f).\n", filename, relativeShift * maxShift, relativeShift);
-        }
-*/
     }
 }
