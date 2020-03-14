@@ -21,6 +21,9 @@ public class GaussianOutputFile extends OutputFileFormat {
     /** The molecule. */
     public final Molecule molecule;
 
+	/** The route card. */
+    public final String routeCard;
+
     /**
      * Reads a Gaussian output file from disk.  Reads the last geometry and potential energy, as well
      * as forces and normal modes, if they are available.  Verbose output should be called with
@@ -30,6 +33,25 @@ public class GaussianOutputFile extends OutputFileFormat {
     public GaussianOutputFile(String filename)
     {
         super(filename);
+
+        // read the route card
+        String routeCard = "";
+        try (BufferedReader reader = new BufferedReader(new FileReader(filename))) {
+            String line = null;
+            while ( (line = reader.readLine()) != null ) {
+                if ( line.startsWith(" #p") ) {
+                    while ( ! line.startsWith(" ---") ) {
+                        line = line.substring(1);
+                        routeCard += line;
+                        line = reader.readLine();
+                    }
+                    break;
+                }
+            }
+        }
+        catch (Exception e) {
+            throw new IllegalArgumentException(e.getMessage());
+        }
 
         // check for Link1
         int link1count = 0;
@@ -114,6 +136,8 @@ public class GaussianOutputFile extends OutputFileFormat {
         }
 
         // read normal modes if available (assumes freq=hpmodes is set)
+        // regular frequency calculations have only two dashes and should not be read:
+        // e.g:  Frequencies --    133.4685               189.8890               264.6334
         List<Double> frequencies = new ArrayList<>();
         List<Double> reducedMasses = new ArrayList<>();
         List<Double> forceConstants = new ArrayList<>();
@@ -126,7 +150,7 @@ public class GaussianOutputFile extends OutputFileFormat {
                 for (int j=2; j < fields.size(); j++) {
                     if ( fields.get(j).indexOf("*") > -1 ) {
                             System.out.println("Warning: invalid frequency ignored.");
-                            skipJ.add(j+1);  // have to account for the fact that frequencies is on word
+                            skipJ.add(j+1);  // have to account for the fact that frequencies is one word
                                              // but reduced masses and force constants are two words
                         }
                     else
@@ -284,6 +308,7 @@ public class GaussianOutputFile extends OutputFileFormat {
 
         // create object
         this.molecule = new Molecule(contents, modes, forces, name, charge, multiplicity, potentialEnergy, shieldings);
+        this.routeCard = routeCard;
     }
 
     @Override 

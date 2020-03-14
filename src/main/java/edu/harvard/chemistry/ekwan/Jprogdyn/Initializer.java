@@ -226,16 +226,44 @@ public class Initializer implements Immutable, Serializable
 
         /**
          * Creates a time zero trajectory point using the displaced positions and xyz velocities that have been calculated during initialization.
+         * @return a new TrajectoryPoint
          */
-        public TrajectoryPoint createTrajectoryPoint()
-        {
+        public TrajectoryPoint createTrajectoryPoint() {
+            int numberOfAtoms = startingGeometry.size();
             List<Vector3D> positions = new ArrayList<>(startingGeometry);
-            for (int i=0; i < positions.size(); i++)
+            for (int i=0; i < numberOfAtoms; i++)
                 positions.set(i, positions.get(i).add(displacements.get(i)));
             return TrajectoryPoint.create(0.0, positions, velocities);
         }
+
+        /**
+         * Generates the perturbed geometry.
+         * @param the molecule with the starting geometry
+         * @return a new molecule containing the perturbed geometry.
+         */
+        public Molecule createMolecule(Molecule templateMolecule) {
+            int numberOfAtoms = startingGeometry.size();
+            List<Vector3D> newPositions = new ArrayList<>(numberOfAtoms);
+            for (int i=0; i < numberOfAtoms; i++) {
+                Vector3D oldPosition = startingGeometry.get(i);
+                Vector3D newPosition = oldPosition.add(displacements.get(i));
+                newPositions.add(newPosition);
+            }
+            return templateMolecule.setPositions(newPositions);
+        }
     }
 
+    /**
+     * Creates a structure based on the initialization parameters.
+     * Meant for generating thermal initializations for benchmarks.
+     * @param originalMolecule the unperturbed geometry
+     * @return a perturbed geometry
+     */
+    public Molecule generateStructure(Molecule originalMolecule) {
+        ScratchPaper scratchPaper = createCandidate();
+        return scratchPaper.createMolecule(originalMolecule);
+    }
+    
     /**
      * Makes a t=0 trajectory point for a trajectory but does not evaluate it.  Can be called multiple
      * times on the same object; repeated calls are statistically independent.  If the desired and actual
@@ -469,6 +497,7 @@ public class Initializer implements Immutable, Serializable
     private void doQuasiclassicalVibration(ScratchPaper scratchPaper, NormalMode mode, int modeIndex)
     {
         // choose vibrational level
+        double originalFrequency = mode.frequency;
         double frequency = scaleFactor * mode.frequency; // cm-1
         if ( frequency < MINIMUM_FREQUENCY )
             frequency = MINIMUM_FREQUENCY;
@@ -484,8 +513,8 @@ public class Initializer implements Immutable, Serializable
         double shift = HarmonicOscillatorDistribution.drawRandomQuantumDisplacement(level, reducedMass, frequency, forceConstant);
         double maxShift = HarmonicOscillatorDistribution.getClassicalTurningPoint(thisTotalEnergy, forceConstant);
 
-        System.out.printf("Selected qc level %1d (%4.2f kcal total) for mode %4d (%4.0f cm^-1; unscaled %4.0f cm^-1).  Shift is %5.0f%% (%5.2f of a possible %5.2f A).\n",
-                          level, thisTotalEnergy, modeIndex, frequency, frequency/scaleFactor, 100.0*(shift/maxShift), shift, maxShift);
+        System.out.printf("Selected qc level %1d (%4.2f kcal total) for mode %4d (%5.0f cm^-1; unscaled %5.0f cm^-1).  Shift is %5.0f%% (%5.2f of a possible %5.2f A).\n",
+                          level, thisTotalEnergy, modeIndex, frequency, originalFrequency, 100.0*(shift/maxShift), shift, maxShift);
 
         // displace and add velocities
         doVibration(mode, modeIndex, thisTotalEnergy, shift, scratchPaper, VelocitySign.RANDOMIZE);

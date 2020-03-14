@@ -53,12 +53,11 @@ public class Atom implements Immutable, Serializable {
     }
 
     /**
-     * Returns a copy of this atom with a new position.
+     * Returns a copy of this atom 
      * @param newPosition the new position for the atom
      * @return a copy of the atom
      */
     public Atom shift(Vector3D newPosition) {
-        newPosition = newPosition.add(position);
         return new Atom(symbol, mass, newPosition);
     }
 
