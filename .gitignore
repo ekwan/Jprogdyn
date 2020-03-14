@@ -13,3 +13,4 @@ buildNumber.properties
 gaussian/*
 checkpoints/*
 analysis/*
+*.sh

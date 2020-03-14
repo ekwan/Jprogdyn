@@ -368,8 +368,8 @@ public class Initializer implements Immutable, Serializable
         double relativeDisplacement = shift/maxShift;
         if ( mode.frequency < DISPLACEMENT_FREQUENCY_THRESHOLD )
             {
+                System.out.printf("Relative displacement in mode %d set from %4.0f%% to ZERO because of low frequency!\n", modeIndex, relativeDisplacement * 100.0);
                 relativeDisplacement = 0.0;
-                System.out.printf("Relative displacement in this mode set from %4.0f%% to ZERO because of low frequency!\n", relativeDisplacement * 100.0);
             }
         displacementRecord.put(modeIndex, maxShift*relativeDisplacement);
 

@@ -282,8 +282,8 @@ public class Loader {
             quit("maximum number of initialization attempts must be at least 10");
         
         double harmonicTolerance = getDouble("harmonic_tolerance");
-        if ( harmonicTolerance < 0.0001 || harmonicTolerance > 10.0 )
-            quit("harmonic tolerance must be [0.0001,10.0]");
+        if ( harmonicTolerance < 0.00001 || harmonicTolerance > 10.0 )
+            quit("harmonic tolerance must be [0.00001,10.0]");
         
         double scaleFactor = getDouble("scale_factor");
         if ( scaleFactor < 0.5 || scaleFactor > 1.5 )
