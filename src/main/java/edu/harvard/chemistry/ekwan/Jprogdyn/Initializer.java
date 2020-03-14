@@ -345,12 +345,12 @@ public class Initializer implements Immutable, Serializable
                 double absoluteTolerance = (tolerance/100.0) * Math.abs(desiredPotentialEnergy) * Units.KCAL_PER_HARTREE;
                 if ( difference > tolerance )
                     {
-                        System.out.printf("Initialization failed by %.4f%% = %.1f kcal (%.4f desired PE in hartree, %.4f actual, %.1f kcal tolerance).\n",
+                        System.out.printf("Initialization failed by %.5f%% = %.2f kcal (%.4f desired PE in hartree, %.4f actual, %.1f kcal tolerance).\n",
                                           difference, absoluteDifference, desiredPotentialEnergy, actualPotentialEnergy, absoluteTolerance);
                     }
                 else
                     {
-                        System.out.printf("Initialization passed! (Deviation was %.4f%% = %.1f kcal, %.4f desired PE in hartree, %.4f actual, %.1f kcal tolerance)\n",
+                        System.out.printf("Initialization passed! (Deviation was %.5f%% = %.2f kcal, %.4f desired PE in hartree, %.4f actual, %.1f kcal tolerance)\n",
                                           difference, absoluteDifference, desiredPotentialEnergy, actualPotentialEnergy, absoluteTolerance);
                         return candidate;
                     }
