@@ -36,9 +36,9 @@ public class InitializerTest extends TestCase
     public void testInitializer()
     {
         // displacement parameters
-        String moleculeFilename = "test_files/simple-neutral-ts-b3lyp_d3bj-juntz-gas.out";      // filename to read modes from
+        String moleculeFilename = "test_files/methane_b3lyp_midix.out";      // filename to read modes from
         double temperature = 298.0;                                                              // in K
-        int numberOfInitializations = 100;                                                       // how many files to make
+        int numberOfInitializations = 5;                                                         // how many files to make
         Map<Integer,Initializer.VibrationalInitializationType> specialModeInitializationMap = new HashMap<>();  // zero-indexed mode number --> initialization type
         specialModeInitializationMap.put(0,Initializer.VibrationalInitializationType.NONE);      // don't displace the TS mode
 
@@ -96,7 +96,7 @@ public class InitializerTest extends TestCase
                 double z = newMolecule.contents.get(j).position.getZ();
                 s.append(String.format("   %-5s     %15.10f    %15.10f    %15.10f\n", symbol, x, y, z));
             }
-            String filename = String.format("%s-init_%03d.template", outputPrefix, i);
+            String filename = String.format("%s-init_%03d.gjf", outputPrefix, i);
             InputFileFormat.writeStringToDisk(s.toString(),filename);
             System.out.printf("> Wrote to %s.\n\n", filename);
         }
