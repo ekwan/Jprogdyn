@@ -12,9 +12,9 @@ jobDirectory=$1
 
 # ensure directory is empty
 cd $jobDirectory
-export GAUSS_SCRDIR=$jobDirectory
+#export GAUSS_SCRDIR=$jobDirectory
 
 # run Gaussian
-g16 gaussian.gjf gaussian.out
+g16 gaussian.gjf gaussian.out 
 
 # the job directory will be cleaned up by Jprogdyn, so we don't need to do anything for that

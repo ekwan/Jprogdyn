@@ -48,8 +48,13 @@ public class RotationalBoltzmann implements Immutable {
         // we want to move the center of mass to the origin for easy calculation
         Vector3D centerOfMass = RotationalBoltzmann.centerOfMass(contents); 
         List<Atom> shiftedContents = new ArrayList<Atom>();
-        for ( Atom atom : contents )
-            shiftedContents.add(atom.shift(centerOfMass.negate()));
+        for ( Atom atom : contents ) {
+            Vector3D oldPosition = atom.position;
+            Vector3D translation = centerOfMass.negate();
+            Vector3D newPosition = oldPosition.add(translation);
+            Atom newAtom = atom.shift(newPosition);
+            shiftedContents.add(newAtom);
+        }
 
         // we will now calculate moments
         double Ixx = 0;
@@ -72,21 +77,21 @@ public class RotationalBoltzmann implements Immutable {
             }
 
         RealMatrix I = MatrixUtils.createRealMatrix(new double[][]{{Ixx, Ixy, Ixz},{Ixy, Iyy, Iyz},{Ixz, Iyz, Izz}});
+        
         EigenDecomposition eigenI = new EigenDecomposition(I);
-       
-        // System.out.println(eigenI.getD());
        
         // get the principal axes from the V matrix
         this.axis1 = new Vector3D(eigenI.getV().getColumn(0)).normalize();
         this.axis2 = new Vector3D(eigenI.getV().getColumn(1)).normalize();
         this.axis3 = new Vector3D(eigenI.getV().getColumn(2)).normalize();
-
+        
         // read the eigenvalues from the EigenDecomposition.
         // certain pathological cases will not have three eigenvalues
         // in this cases, we will store a zero value for some eigenvalues, 
         // and remember to deal with it when obtaining an angular frequency.
         // essentially, we will not rotate on axes with zero eigenvalue.
         double[] evalues = eigenI.getRealEigenvalues();
+        
         if ( evalues.length == 0 )
             throw new IllegalArgumentException ("Given atom group has no valid rotations!");
         else if ( evalues.length == 1 )

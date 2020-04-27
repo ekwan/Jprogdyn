@@ -38,9 +38,9 @@ public class InitializerTest extends TestCase
         // displacement parameters
         String moleculeFilename = "test_files/methane_b3lyp_midix.out";      // filename to read modes from
         double temperature = 298.0;                                                              // in K
-        int numberOfInitializations = 5;                                                         // how many files to make
+        int numberOfInitializations = 1;                                                         // how many files to make
         Map<Integer,Initializer.VibrationalInitializationType> specialModeInitializationMap = new HashMap<>();  // zero-indexed mode number --> initialization type
-        specialModeInitializationMap.put(0,Initializer.VibrationalInitializationType.NONE);      // don't displace the TS mode
+        //specialModeInitializationMap.put(0,Initializer.VibrationalInitializationType.NONE);      // don't displace the TS mode
 
         // Gaussian parameters
         String outputPrefix = moleculeFilename.replace("test_files","analysis").replace(".out","");
@@ -81,10 +81,10 @@ public class InitializerTest extends TestCase
 
             // generate a new initialization
             Molecule newMolecule = molecule;
-            if ( i>0 )
+            //if ( i>0 )
                 newMolecule = initializer.generateStructure(molecule);
-            else
-                System.out.println("[ Not perturbing molecule for first iteration. ]");
+            //else
+            //    System.out.println("[ Not perturbing molecule for first iteration. ]");
 
             // write out molecule
             StringBuilder s = new StringBuilder();

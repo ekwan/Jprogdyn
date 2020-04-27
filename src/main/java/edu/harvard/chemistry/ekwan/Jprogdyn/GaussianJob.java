@@ -84,7 +84,11 @@ public class GaussianJob implements Callable<GaussianResult>, Serializable {
                 
                 String runString = String.format("%s/run_gaussian.sh %s %s", GAUSSIAN_DIRECTORY, jobDirectoryName, baseFilename);
                 //System.out.println(runString);
-                Process process = Runtime.getRuntime().exec(runString);
+                ProcessBuilder processBuilder = new ProcessBuilder(runString.split(" "));
+                //processBuilder.redirectOutput(ProcessBuilder.Redirect.INHERIT);
+                //processBuilder.redirectError(ProcessBuilder.Redirect.INHERIT);
+                Process process = processBuilder.start();
+                //Process process = Runtime.getRuntime().exec(runString);
                 int exitValue = process.waitFor();
                 long endTime = System.currentTimeMillis();
                 elapsedTime = (endTime - startTime) / 1000.0;
